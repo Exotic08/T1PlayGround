@@ -3,343 +3,524 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minesweeper Online</title>
+    <title>Minesweeper Pro Online</title>
     <style>
-        /* GIỮ NGUYÊN GIAO DIỆN CŨ VÌ ĐÃ TỐI ƯU */
-        :root { --bg-dark: #0f172a; --panel-bg: #1e293b; --primary: #3b82f6; --accent: #10b981; --danger: #ef4444; --text-light: #f1f5f9; --text-dim: #94a3b8; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: var(--text-light); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; touch-action: manipulation; }
-        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 20px; animation: fadeIn 0.3s ease-out; }
-        .screen.active { display: flex; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        h1 { color: var(--primary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; text-align: center; }
-        h2 { color: var(--accent); margin-bottom: 15px; }
-        .btn { background: var(--panel-bg); color: var(--text-light); border: 2px solid var(--primary); padding: 14px 24px; margin: 8px; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; max-width: 280px; transition: transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        /* --- CORE STYLES --- */
+        :root {
+            --bg: #111827;
+            --panel: #1f2937;
+            --primary: #3b82f6;
+            --accent: #10b981;
+            --danger: #ef4444;
+            --text: #f3f4f6;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* --- SCREEN MANAGER --- */
+        .screen {
+            position: absolute; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: var(--bg);
+            transition: opacity 0.3s ease;
+            opacity: 0; pointer-events: none; z-index: 0;
+        }
+        .screen.active { opacity: 1; pointer-events: auto; z-index: 10; }
+
+        h1 { font-size: 1.8rem; margin-bottom: 2rem; color: var(--primary); text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+
+        /* --- UI COMPONENTS --- */
+        .btn {
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--primary);
+            padding: 16px 24px;
+            margin: 8px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 80%; max-width: 300px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: var(--shadow);
+        }
         .btn:active { transform: scale(0.96); }
         .btn-primary { background: var(--primary); color: white; border: none; }
         .btn-danger { border-color: var(--danger); color: var(--danger); }
-        .btn-back { position: absolute; top: 15px; left: 15px; width: auto; padding: 8px 16px; font-size: 0.9rem; z-index: 100; background: rgba(30, 41, 59, 0.8); border: 1px solid var(--text-dim); }
-        input { padding: 15px; border-radius: 10px; background: var(--panel-bg); color: white; border: 1px solid var(--text-dim); font-size: 1.1rem; margin-bottom: 20px; text-align: center; width: 100%; max-width: 280px; }
-        input:focus { outline: 2px solid var(--primary); border-color: transparent; }
-        .game-wrapper { width: 95vw; max-width: 400px; background: var(--panel-bg); padding: 8px; border-radius: 12px; display: flex; justify-content: center; align-items: center; aspect-ratio: 1/1; box-shadow: 0 10px 20px rgba(0,0,0,0.3); position: relative; }
-        .grid { display: grid; width: 100%; height: 100%; gap: 2px; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); }
-        .cell { background: #475569; border-radius: 3px; display: flex; justify-content: center; align-items: center; font-weight: 800; font-size: 16px; cursor: pointer; user-select: none; transition: background 0.1s; }
-        .cell.revealed { background: #334155; border: 1px solid #1e293b; cursor: default; }
-        .cell.flagged { background: #475569; }
-        .cell.bomb { background: var(--danger) !important; color: white !important; }
-        .cell[data-v="1"] { color: #60a5fa; } .cell[data-v="2"] { color: #4ade80; } .cell[data-v="3"] { color: #f87171; } .cell[data-v="4"] { color: #c084fc; } .cell[data-v="5"] { color: #fbbf24; }
-        .header-hud { display: flex; justify-content: space-between; width: 95vw; max-width: 400px; margin-bottom: 15px; font-weight: bold; font-size: 1.2rem; background: rgba(30, 41, 59, 0.5); padding: 10px; border-radius: 8px; }
-        .controls { display: flex; gap: 10px; margin-top: 15px; width: 95vw; max-width: 400px; }
-        .mode-btn { flex: 1; padding: 15px; border-radius: 10px; border: none; background: #334155; color: #94a3b8; font-weight: bold; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
-        .mode-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 0 #1d4ed8; transform: translateY(-2px); }
-        .mode-btn.active.flag { background: var(--danger); box-shadow: 0 4px 0 #b91c1c; }
-        .mode-btn:active { transform: translateY(0); box-shadow: none !important;}
-        .user-bar { position: absolute; top: 0; right: 0; padding: 10px 15px; background: rgba(15, 23, 42, 0.9); font-size: 0.9rem; z-index: 50; border-bottom-left-radius: 10px; font-weight: bold; border-left: 1px solid #334155; border-bottom: 1px solid #334155; }
-        .lb-container { width: 100%; max-width: 350px; background: var(--panel-bg); border-radius: 12px; max-height: 60vh; overflow-y: auto; border: 1px solid #334155; }
-        .lb-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid var(--bg-dark); }
-        .lb-item:last-child { border-bottom: none; }
-        .lb-rank { color: var(--text-dim); font-weight: bold; width: 30px;}
-        .lb-name { flex: 1; font-weight: bold; }
-        .lb-score { color: var(--accent); font-weight: bold; }
-        .result-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(15, 23, 42, 0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 20; border-radius: 12px; animation: fadeIn 0.2s; }
-        .result-overlay.show { display: flex; }
-        .result-title { font-size: 2rem; margin-bottom: 20px; font-weight: 800; text-align: center;}
+        .btn-icon { width: 40px; height: 40px; padding: 0; border-radius: 50%; position: absolute; top: 15px; left: 15px; z-index: 50; }
+
+        input {
+            padding: 15px;
+            border-radius: 12px;
+            background: var(--panel);
+            border: 1px solid #374151;
+            color: white;
+            font-size: 1.1rem;
+            text-align: center;
+            width: 80%; max-width: 300px;
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+        }
+        input:focus { outline: none; border-color: var(--primary); }
+
+        /* --- GAME BOARD --- */
+        .game-area {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; height: 100%;
+        }
+
+        .hud {
+            display: flex; justify-content: space-between; width: 95vw; max-width: 400px;
+            margin-bottom: 10px; padding: 10px 20px;
+            background: var(--panel); border-radius: 12px;
+            font-weight: bold; font-size: 1.2rem;
+        }
+
+        .board-container {
+            width: 95vw; max-width: 400px;
+            aspect-ratio: 1/1;
+            background: var(--panel);
+            padding: 5px; border-radius: 8px;
+            position: relative;
+        }
+
+        .grid {
+            display: grid; width: 100%; height: 100%; gap: 2px;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+        }
+
+        .cell {
+            background: #374151; border-radius: 4px;
+            display: flex; justify-content: center; align-items: center;
+            font-weight: 900; font-size: 18px; cursor: pointer;
+            transition: background 0.1s;
+        }
+        .cell.revealed { background: #1f2937; border: 1px solid #374151; cursor: default; }
+        .cell.flagged { background: #374151; }
+        .cell.bomb { background: var(--danger) !important; animation: explode 0.3s; }
+        @keyframes explode { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+        /* Colors for numbers */
+        .c1 { color: #60a5fa; } .c2 { color: #4ade80; } .c3 { color: #f87171; } .c4 { color: #c084fc; } 
+        .c5 { color: #fbbf24; } .c6 { color: #2dd4bf; } .c7 { color: #e879f9; } .c8 { color: #9ca3af; }
+
+        /* --- CONTROLS --- */
+        .controls {
+            display: flex; width: 95vw; max-width: 400px; margin-top: 15px; gap: 10px;
+        }
+        .toggle-btn {
+            flex: 1; padding: 15px; border-radius: 12px; border: none;
+            background: #374151; color: #9ca3af; font-weight: bold; font-size: 1.1rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .toggle-btn.active { flex: 1.5; color: #111827; box-shadow: 0 0 15px rgba(0,0,0,0.3); }
+        .toggle-btn.dig.active { background: var(--accent); }
+        .toggle-btn.flag.active { background: var(--danger); }
+
+        /* --- LEADERBOARD & OVERLAY --- */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(17, 24, 39, 0.95);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 20; backdrop-filter: blur(5px);
+        }
+        .overlay.show { display: flex; animation: fadeIn 0.3s; }
+        
+        .lb-list {
+            list-style: none; padding: 0; width: 90%; max-width: 350px;
+            max-height: 60vh; overflow-y: auto;
+            background: var(--panel); border-radius: 12px;
+        }
+        .lb-item {
+            display: flex; justify-content: space-between; padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .lb-rank { font-weight: bold; color: #6b7280; width: 30px; }
+        .lb-name { flex: 1; font-weight: 600; text-align: left; padding-left: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+        .lb-score { color: var(--accent); font-weight: 800; }
+        .lb-me { background: rgba(59, 130, 246, 0.15); border-left: 3px solid var(--primary); }
+
+        /* User Status Bar */
+        .status-bar {
+            position: absolute; top: 0; right: 0; z-index: 50;
+            background: rgba(31, 41, 55, 0.9); padding: 8px 12px;
+            border-bottom-left-radius: 10px; font-size: 0.9rem;
+            display: none; border-left: 1px solid #374151; border-bottom: 1px solid #374151;
+        }
     </style>
 </head>
 <body>
 
-    <div id="user-info" class="user-bar" style="display: none;">
-        👤 <span id="display-name">...</span> | 🏆 <span id="display-wins">...</span>
+    <div id="user-status" class="status-bar">
+        👤 <span id="ui-name">...</span> | 🏆 <span id="ui-score">0</span>
     </div>
 
     <div id="screen-login" class="screen active">
-        <h1>Minesweeper Online</h1>
-        <p style="color: var(--text-dim); margin-bottom: 10px;">Dữ liệu được lưu trên mây ☁️</p>
-        <input type="text" id="username-input" placeholder="Nhập tên của bạn..." maxlength="12">
-        <button class="btn btn-primary" id="btn-login">BẮT ĐẦU 🚀</button>
-        <div id="loading" style="display:none; color: var(--accent); margin-top:10px;">Đang kết nối server...</div>
+        <h1>MINESWEEPER PRO</h1>
+        <input type="text" id="inp-name" placeholder="Nhập tên của bạn (Tối đa 10 ký tự)" maxlength="10">
+        <button class="btn btn-primary" id="btn-login">BẮT ĐẦU CHIẾN</button>
+        <p id="msg-login" style="color: var(--accent); min-height: 20px; font-size: 0.9rem;"></p>
     </div>
 
     <div id="screen-menu" class="screen">
-        <h1>MENU</h1>
-        <button class="btn btn-primary" onclick="App.switchScreen('game')">🎮 CHƠI NGAY</button>
-        <button class="btn" onclick="App.showLeaderboard()">🏆 BẢNG XẾP HẠNG</button>
+        <h1>MENU CHÍNH</h1>
+        <button class="btn btn-primary" onclick="App.play()">🎮 CHƠI NGAY</button>
+        <button class="btn" onclick="App.leaderboard()">🏆 BẢNG XẾP HẠNG</button>
         <button class="btn btn-danger" onclick="App.logout()">Thoát</button>
     </div>
 
-    <div id="screen-leaderboard" class="screen">
-        <button class="btn btn-back" onclick="App.switchScreen('menu')">⬅ Menu</button>
-        <h2>TOP SERVER</h2>
-        <div class="lb-container">
-            <div id="lb-list">Loading...</div>
+    <div id="screen-game" class="screen">
+        <button class="btn btn-icon" onclick="App.nav('menu')">⬅</button>
+        <div class="game-area">
+            <div class="hud">
+                <span>🚩 <span id="g-flags">0</span></span>
+                <span>⏱️ <span id="g-time">0</span></span>
+            </div>
+            
+            <div class="board-container">
+                <div id="grid" class="grid"></div>
+                
+                <div id="overlay-result" class="overlay">
+                    <h1 id="res-title">THẮNG!</h1>
+                    <button class="btn btn-primary" onclick="Game.init()">Chơi Lại</button>
+                    <button class="btn" onclick="App.nav('menu')">Về Menu</button>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="mode-dig" class="toggle-btn dig active" onclick="Game.setMode('dig')">⛏️ ĐÀO</button>
+                <button id="mode-flag" class="toggle-btn flag" onclick="Game.setMode('flag')">🚩 CẮM CỜ</button>
+            </div>
         </div>
     </div>
 
-    <div id="screen-game" class="screen">
-        <button class="btn btn-back" onclick="App.switchScreen('menu')">⬅ Thoát</button>
-        <div class="header-hud">
-            <span>🚩 <span id="game-flags">0</span></span>
-            <span>⏱️ <span id="game-timer">0</span></span>
-        </div>
-        <div class="game-wrapper">
-            <div id="grid" class="grid"></div>
-            <div id="result-overlay" class="result-overlay">
-                <div id="result-msg" class="result-title">THẮNG!</div>
-                <button class="btn btn-primary" onclick="Game.init()">Chơi Lại</button>
-                <button class="btn" onclick="App.switchScreen('menu')" style="margin-top: 10px;">Về Menu</button>
-            </div>
-        </div>
-        <div class="controls">
-            <button id="btn-dig" class="mode-btn active" onclick="Game.setMode('dig')">⛏️ ĐÀO</button>
-            <button id="btn-flag" class="mode-btn flag" onclick="Game.setMode('flag')">🚩 CỜ</button>
-        </div>
+    <div id="screen-leaderboard" class="screen">
+        <button class="btn btn-icon" onclick="App.nav('menu')">⬅</button>
+        <h2 style="color:var(--accent); margin-top: 60px;">BẢNG XẾP HẠNG</h2>
+        <ul id="lb-list" class="lb-list"></ul>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getDatabase, ref, get, set, child, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+        import { getDatabase, ref, get, set, update, child } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        // --- CẤU HÌNH FIREBASE (BẠN PHẢI DÁN CONFIG CỦA BẠN VÀO ĐÂY) ---
+        // --- CẤU HÌNH CỦA BẠN ĐÃ ĐƯỢC TÍCH HỢP ---
         const firebaseConfig = {
-  apiKey: "AIzaSyDXn3IK3Td2WyegZkU0m1hESQQSRLM1Zb8",
-  authDomain: "minesweeper-a7423.firebaseapp.com",
-  databaseURL: "https://minesweeper-a7423-default-rtdb.firebaseio.com",
-  projectId: "minesweeper-a7423",
-  storageBucket: "minesweeper-a7423.firebasestorage.app",
-  messagingSenderId: "305681879682",
-  appId: "1:305681879682:web:31f1a90362b20b06cbda9b",
-  measurementId: "G-XBJQF7Q242"
-};
-
-        // Khởi tạo Firebase
-        let db;
-        try {
-            const app = initializeApp(firebaseConfig);
-            db = getDatabase(app);
-            console.log("Firebase connected");
-        } catch (e) {
-            console.error("Lỗi kết nối Firebase. Hãy kiểm tra config!", e);
-        }
-
-        // --- QUẢN LÝ DỮ LIỆU (ĐÁM MÂY) ---
-        const Cloud = {
-            // Lấy điểm của 1 user
-            getUser: async (name) => {
-                if(!db) return 0;
-                const dbRef = ref(db);
-                try {
-                    const snapshot = await get(child(dbRef, `users/${name}`));
-                    if (snapshot.exists()) {
-                        return snapshot.val();
-                    } else {
-                        return 0; // Chưa chơi bao giờ
-                    }
-                } catch (error) {
-                    console.error(error);
-                    return 0;
-                }
-            },
-
-            // Cập nhật điểm
-            updateWin: async (name, currentWins) => {
-                if(!db) return;
-                const newScore = currentWins + 1;
-                // Cập nhật lên server
-                await set(ref(db, 'users/' + name), newScore);
-                return newScore;
-            },
-
-            // Lấy toàn bộ bảng xếp hạng
-            getAllUsers: async () => {
-                if(!db) return {};
-                const dbRef = ref(db);
-                try {
-                    const snapshot = await get(child(dbRef, `users`));
-                    if (snapshot.exists()) return snapshot.val();
-                    return {};
-                } catch (error) { return {}; }
-            }
+            apiKey: "AIzaSyDXn3IK3Td2WyegZkU0m1hESQQSRLM1Zb8",
+            authDomain: "minesweeper-a7423.firebaseapp.com",
+            databaseURL: "https://minesweeper-a7423-default-rtdb.firebaseio.com",
+            projectId: "minesweeper-a7423",
+            storageBucket: "minesweeper-a7423.firebasestorage.app",
+            messagingSenderId: "305681879682",
+            appId: "1:305681879682:web:31f1a90362b20b06cbda9b",
+            measurementId: "G-XBJQF7Q242"
         };
 
-        // --- APP LOGIC (Đã sửa để dùng Cloud) ---
+        // Kết nối Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- GLOBAL APP STATE ---
+        const State = {
+            user: null,
+            score: 0,
+            dbRef: ref(db)
+        };
+
+        // --- APP CONTROLLER ---
         window.App = {
-            currentUser: null,
-            currentWins: 0,
+            nav: (screen) => {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById('screen-' + screen).classList.add('active');
+            },
 
             login: async () => {
-                const input = document.getElementById('username-input');
-                const name = input.value.trim().replace(/[.#$\[\]]/g, ""); // Firebase không thích ký tự đặc biệt
+                const btn = document.getElementById('btn-login');
+                const msg = document.getElementById('msg-login');
+                const input = document.getElementById('inp-name');
                 
-                if (!name) return alert("Vui lòng nhập tên!");
+                // Lọc tên: Chỉ lấy chữ cái và số, bỏ ký tự đặc biệt để tránh lỗi Firebase
+                let name = input.value.trim().replace(/[^a-zA-Z0-9 ]/g, ""); 
                 
-                document.getElementById('btn-login').style.display = 'none';
-                document.getElementById('loading').style.display = 'block';
+                if (name.length < 2) return alert("Tên quá ngắn!");
 
-                // Lấy dữ liệu từ Cloud
-                const wins = await Cloud.getUser(name);
-                
-                App.currentUser = name;
-                App.currentWins = wins;
-                
-                App.updateHUD();
-                document.getElementById('user-info').style.display = 'block';
-                
-                document.getElementById('btn-login').style.display = 'flex';
-                document.getElementById('loading').style.display = 'none';
-                
-                App.switchScreen('menu');
-            },
+                btn.disabled = true;
+                msg.innerText = "Đang kết nối dữ liệu...";
 
-            logout: () => {
-                App.currentUser = null;
-                location.reload(); // Reload cho sạch
-            },
+                try {
+                    // Lấy điểm từ server
+                    const snapshot = await get(child(State.dbRef, `users/${name}`));
+                    State.user = name;
+                    State.score = snapshot.exists() ? snapshot.val() : 0;
 
-            updateHUD: () => {
-                if (App.currentUser) {
-                    document.getElementById('display-name').innerText = App.currentUser;
-                    document.getElementById('display-wins').innerText = App.currentWins;
+                    App.updateUI();
+                    document.getElementById('user-status').style.display = 'block';
+                    App.nav('menu');
+                } catch (e) {
+                    console.error(e);
+                    msg.innerText = "Lỗi mạng. Thử lại sau!";
                 }
+                btn.disabled = false;
             },
 
-            recordWin: async () => {
-                if (!App.currentUser) return;
-                // Lưu lên mây
-                const newScore = await Cloud.updateWin(App.currentUser, App.currentWins);
-                App.currentWins = newScore;
-                App.updateHUD();
+            play: () => {
+                App.nav('game');
+                Game.init();
             },
 
-            switchScreen: (screenId) => {
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                document.getElementById('screen-' + screenId).classList.add('active');
-                if (screenId === 'game') window.Game.init();
-            },
+            logout: () => location.reload(),
 
-            showLeaderboard: async () => {
+            leaderboard: async () => {
                 const list = document.getElementById('lb-list');
-                list.innerHTML = 'Đang tải dữ liệu server...';
-                App.switchScreen('leaderboard');
+                list.innerHTML = '<li style="padding:20px; text-align:center;">Đang tải...</li>';
+                App.nav('leaderboard');
 
-                const users = await Cloud.getAllUsers();
-                const sorted = Object.entries(users).sort((a, b) => b[1] - a[1]);
-
-                list.innerHTML = '';
-                if (sorted.length === 0) {
-                    list.innerHTML = '<div style="padding:15px; text-align:center;">Chưa có dữ liệu</div>';
-                } else {
-                    sorted.forEach((u, index) => {
-                        const isMe = u[0] === App.currentUser;
-                        list.innerHTML += `
-                            <div class="lb-item" style="${isMe ? 'background: rgba(59, 130, 246, 0.1);' : ''}">
-                                <span class="lb-rank">#${index + 1}</span>
-                                <span class="lb-name">${u[0]} ${isMe ? '(Bạn)' : ''}</span>
-                                <span class="lb-score">${u[1]} Wins</span>
-                            </div>
-                        `;
-                    });
+                try {
+                    const snapshot = await get(child(State.dbRef, 'users'));
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        // Chuyển object thành mảng -> sắp xếp giảm dần
+                        const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]);
+                        
+                        list.innerHTML = '';
+                        sorted.forEach((item, index) => {
+                            const isMe = item[0] === State.user;
+                            list.innerHTML += `
+                                <li class="lb-item ${isMe ? 'lb-me' : ''}">
+                                    <span class="lb-rank">#${index + 1}</span>
+                                    <span class="lb-name">${item[0]} ${isMe ? '(Bạn)' : ''}</span>
+                                    <span class="lb-score">${item[1]}</span>
+                                </li>
+                            `;
+                        });
+                    } else {
+                        list.innerHTML = '<li style="padding:20px; text-align:center;">Chưa có dữ liệu</li>';
+                    }
+                } catch (e) {
+                    list.innerHTML = '<li style="padding:20px; text-align:center; color:red">Lỗi tải dữ liệu</li>';
                 }
+            },
+
+            updateUI: () => {
+                document.getElementById('ui-name').innerText = State.user;
+                document.getElementById('ui-score').innerText = State.score;
+            },
+
+            saveWin: async () => {
+                if (!State.user) return;
+                State.score++;
+                App.updateUI();
+                // Update lên Firebase (chỉ cập nhật trường của user đó)
+                const updates = {};
+                updates['/users/' + State.user] = State.score;
+                await update(State.dbRef, updates);
             }
         };
 
-        // Gắn sự kiện click cho nút Login (vì module không gọi trực tiếp từ HTML onclick được đôi khi)
+        // Gắn sự kiện Login
         document.getElementById('btn-login').onclick = App.login;
 
-        // --- GAME ENGINE (GIỮ NGUYÊN LOGIC CORE) ---
+
+        // --- GAME ENGINE (TỐI ƯU HÓA) ---
         window.Game = {
-            cfg: { w: 10, bombs: 12 },
-            state: {},
-            dom: {},
+            config: { w: 10, bombs: 15 }, // Tăng độ khó lên 15 bom cho hấp dẫn
+            data: [],
+            dom: [],
+            state: { over: false, first: true, flags: 0, revealed: 0, mode: 'dig', time: 0, timer: null },
 
             init: () => {
-                Game.state = { grid: Array(100).fill(0), isOver: false, isFirst: true, flags: 0, safeRevealed: 0, mode: 'dig', time: 0, timerId: null };
-                const gridEl = document.getElementById('grid');
-                gridEl.innerHTML = '';
-                Game.dom.cells = [];
-                for (let i = 0; i < 100; i++) {
+                const grid = document.getElementById('grid');
+                grid.innerHTML = '';
+                Game.dom = [];
+                Game.data = new Array(100).fill(0);
+                
+                // Reset State
+                Game.state = { over: false, first: true, flags: 0, revealed: 0, mode: 'dig', time: 0, timer: null };
+                
+                // Reset UI
+                document.getElementById('overlay-result').classList.remove('show');
+                Game.updateHUD();
+                clearInterval(Game.state.timer);
+                document.getElementById('g-time').innerText = '0';
+                Game.setMode('dig'); // Reset về đào
+
+                // Render Grid (Dùng DocumentFragment để tối ưu render 1 lần)
+                const fragment = document.createDocumentFragment();
+                for(let i=0; i<100; i++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
-                    cell.onclick = () => Game.handleClick(i);
+                    // Touch start để phản hồi nhanh hơn onclick trên mobile
+                    cell.onclick = () => Game.action(i); 
                     cell.oncontextmenu = (e) => { e.preventDefault(); Game.toggleFlag(i); };
-                    gridEl.appendChild(cell);
-                    Game.dom.cells.push(cell);
+                    fragment.appendChild(cell);
+                    Game.dom.push(cell);
                 }
-                document.getElementById('result-overlay').classList.remove('show');
-                Game.updateStats();
-                clearInterval(Game.state.timerId);
-                document.getElementById('game-timer').innerText = '0';
+                grid.appendChild(fragment);
             },
 
             setMode: (mode) => {
                 Game.state.mode = mode;
-                document.getElementById('btn-dig').className = `mode-btn ${mode==='dig'?'active':''}`;
-                document.getElementById('btn-flag').className = `mode-btn flag ${mode==='flag'?'active':''}`;
-                if(navigator.vibrate) navigator.vibrate(20);
+                const btnDig = document.getElementById('mode-dig');
+                const btnFlag = document.getElementById('mode-flag');
+                
+                if (mode === 'dig') {
+                    btnDig.classList.add('active');
+                    btnFlag.classList.remove('active');
+                } else {
+                    btnFlag.classList.add('active');
+                    btnDig.classList.remove('active');
+                }
+                Game.vibrate(20);
             },
 
-            updateStats: () => { document.getElementById('game-flags').innerText = Game.cfg.bombs - Game.state.flags; },
-
-            handleClick: (idx) => {
-                if (Game.state.isOver) return;
-                Game.state.mode === 'flag' ? Game.toggleFlag(idx) : Game.dig(idx);
+            updateHUD: () => {
+                document.getElementById('g-flags').innerText = Game.config.bombs - Game.state.flags;
             },
 
-            toggleFlag: (idx) => {
-                const cell = Game.dom.cells[idx];
+            action: (i) => {
+                if (Game.state.over) return;
+                if (Game.state.mode === 'flag') Game.toggleFlag(i);
+                else Game.dig(i);
+            },
+
+            toggleFlag: (i) => {
+                const cell = Game.dom[i];
                 if (cell.classList.contains('revealed')) return;
-                if (cell.classList.contains('flagged')) { cell.classList.remove('flagged'); cell.innerText=''; Game.state.flags--; }
-                else if (Game.state.flags < Game.cfg.bombs) { cell.classList.add('flagged'); cell.innerText='🚩'; Game.state.flags++; if(navigator.vibrate) navigator.vibrate(30); }
-                Game.updateStats();
+
+                if (cell.classList.contains('flagged')) {
+                    cell.classList.remove('flagged');
+                    cell.innerText = '';
+                    Game.state.flags--;
+                } else if (Game.state.flags < Game.config.bombs) {
+                    cell.classList.add('flagged');
+                    cell.innerText = '🚩';
+                    Game.state.flags++;
+                    Game.vibrate(40);
+                }
+                Game.updateHUD();
             },
 
-            dig: (idx) => {
-                const cell = Game.dom.cells[idx];
+            dig: (i) => {
+                const cell = Game.dom[i];
                 if (cell.classList.contains('flagged') || cell.classList.contains('revealed')) return;
-                if (Game.state.isFirst) {
-                    Game.placeBombs(idx); Game.state.isFirst = false;
-                    Game.state.timerId = setInterval(() => { Game.state.time++; document.getElementById('game-timer').innerText = Game.state.time; }, 1000);
+
+                // First Click Safe Logic
+                if (Game.state.first) {
+                    Game.plantBombs(i);
+                    Game.state.first = false;
+                    Game.state.timer = setInterval(() => {
+                        Game.state.time++;
+                        document.getElementById('g-time').innerText = Game.state.time;
+                    }, 1000);
                 }
-                if (Game.state.grid[idx] === 'B') Game.gameOver(false, idx);
-                else { Game.reveal(idx); Game.checkWin(); }
+
+                if (Game.data[i] === 'B') {
+                    Game.gameOver(false, i);
+                } else {
+                    Game.reveal(i);
+                    // Check Win ngay lập tức
+                    if (Game.state.revealed === 100 - Game.config.bombs) Game.gameOver(true);
+                }
             },
 
-            reveal: (idx) => {
-                const cell = Game.dom.cells[idx];
+            reveal: (i) => {
+                const cell = Game.dom[i];
                 if (cell.classList.contains('revealed')) return;
-                cell.classList.add('revealed'); Game.state.safeRevealed++;
-                const val = Game.state.grid[idx];
-                if (val > 0) { cell.innerText = val; cell.setAttribute('data-v', val); }
-                else { Game.getNeighbors(idx).forEach(n => Game.reveal(n)); }
+
+                cell.classList.add('revealed');
+                Game.state.revealed++;
+                
+                const val = Game.data[i];
+                if (val > 0) {
+                    cell.innerText = val;
+                    cell.classList.add('c' + val);
+                } else {
+                    // Flood Fill (Đệ quy mở ô trống)
+                    Game.getNeighbors(i).forEach(n => Game.reveal(n));
+                }
             },
 
-            placeBombs: (safeIdx) => {
+            plantBombs: (safeIdx) => {
                 let count = 0;
-                while (count < Game.cfg.bombs) {
-                    let r = Math.floor(Math.random() * 100);
-                    if (r !== safeIdx && Game.state.grid[r] !== 'B') { Game.state.grid[r] = 'B'; count++; }
+                while(count < Game.config.bombs) {
+                    let rnd = Math.floor(Math.random() * 100);
+                    if (rnd !== safeIdx && Game.data[rnd] !== 'B') {
+                        Game.data[rnd] = 'B';
+                        count++;
+                    }
                 }
-                for (let i = 0; i < 100; i++) {
-                    if (Game.state.grid[i] === 'B') continue;
-                    const bombs = Game.getNeighbors(i).filter(n => Game.state.grid[n] === 'B').length;
-                    Game.state.grid[i] = bombs;
+                // Tính số
+                for(let i=0; i<100; i++) {
+                    if(Game.data[i] === 'B') continue;
+                    const bombs = Game.getNeighbors(i).filter(n => Game.data[n] === 'B').length;
+                    Game.data[i] = bombs;
                 }
             },
 
             getNeighbors: (i) => {
-                const w = 10; const l = i%w===0; const r = i%w===w-1;
-                const c = [!l?i-1:-1, !r?i+1:-1, i-w, i+w, !l?i-w-1:-1, !r?i-w+1:-1, !l?i+w-1:-1, !r?i+w+1:-1];
-                return c.filter(x => x >= 0 && x < 100);
+                const w = 10;
+                const l = i%w === 0, r = i%w === w-1;
+                const neighbors = [
+                    !l ? i-1 : -1, !r ? i+1 : -1,
+                    i-w, i+w,
+                    !l ? i-w-1 : -1, !r ? i-w+1 : -1,
+                    !l ? i+w-1 : -1, !r ? i+w+1 : -1
+                ];
+                return neighbors.filter(n => n >= 0 && n < 100);
             },
 
-            checkWin: () => { if (Game.state.safeRevealed === 100 - Game.cfg.bombs) Game.gameOver(true); },
+            gameOver: (win, i) => {
+                Game.state.over = true;
+                clearInterval(Game.state.timer);
 
-            gameOver: (isWin, idx) => {
-                Game.state.isOver = true; clearInterval(Game.state.timerId);
-                Game.state.grid.forEach((v, i) => { if (v === 'B' && !Game.dom.cells[i].classList.contains('flagged')) { Game.dom.cells[i].classList.add('bomb', 'revealed'); Game.dom.cells[i].innerText = '💣'; }});
-                const msg = document.getElementById('result-msg');
-                if (isWin) { msg.innerText = "CHIẾN THẮNG!"; msg.style.color = "#4ade80"; App.recordWin(); if(navigator.vibrate) navigator.vibrate([100,50,100]); }
-                else { msg.innerText = "BẠN ĐÃ THUA"; msg.style.color = "#ef4444"; if(idx!==undefined) Game.dom.cells[idx].style.background='#b91c1c'; if(navigator.vibrate) navigator.vibrate(400); }
-                setTimeout(() => document.getElementById('result-overlay').classList.add('show'), 800);
+                // Show bombs
+                Game.data.forEach((val, idx) => {
+                    if (val === 'B') {
+                        const c = Game.dom[idx];
+                        if (!c.classList.contains('flagged')) {
+                            c.classList.add('revealed', 'bomb');
+                            c.innerText = '💣';
+                        }
+                    }
+                });
+
+                const overlay = document.getElementById('overlay-result');
+                const title = document.getElementById('res-title');
+                
+                if (win) {
+                    title.innerText = "CHIẾN THẮNG!";
+                    title.style.color = "var(--accent)";
+                    Game.vibrate([100, 50, 100, 50, 200]);
+                    App.saveWin();
+                } else {
+                    title.innerText = "THUA CUỘC!";
+                    title.style.color = "var(--danger)";
+                    if (i !== undefined) Game.dom[i].style.background = "#b91c1c";
+                    Game.vibrate(500);
+                }
+                
+                setTimeout(() => overlay.classList.add('show'), 1000);
+            },
+
+            vibrate: (pattern) => {
+                if (navigator.vibrate) navigator.vibrate(pattern);
             }
         };
     </script>
