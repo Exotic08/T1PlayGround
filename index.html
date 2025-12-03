@@ -3,10 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang Web Của Tôi Đã Sẵn Sàng</title>
+    <title>Minesweeper - Cỗ Máy Lập Trình</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --board-bg: #ccc;
+            --cell-bg: #bdbdbd;
+            --cell-hover: #cfcfcf;
+            --cell-revealed: #e0e0e0;
+            --border-light: #fff;
+            --border-dark: #7b7b7b;
+            --accent: #ff3860;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none; /* Ngăn chọn text khi click nhanh */
+        }
+
+        h1 { margin-bottom: 10px; font-weight: 300; letter-spacing: 2px; }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 300px;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            background: #333;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        #reset-btn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 5px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+        #reset-btn:active { transform: scale(0.95); }
+
+        .grid {
+            display: grid;
+            width: 300px;
+            height: 300px;
+            background-color: var(--board-bg);
+            border: 4px solid #999;
+            /* Grid layout sẽ được set bởi JS dựa trên size */
+        }
+
+        .cell {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: var(--cell-bg);
+            
+            /* Hiệu ứng 3D cổ điển */
+            border-top: 3px solid var(--border-light);
+            border-left: 3px solid var(--border-light);
+            border-bottom: 3px solid var(--border-dark);
+            border-right: 3px solid var(--border-dark);
+            box-sizing: border-box; 
+        }
+
+        .cell:hover { background-color: var(--cell-hover); }
+
+        .cell.revealed {
+            background-color: var(--cell-revealed);
+            border: 1px solid #999; /* Làm phẳng ô đã mở */
+            cursor: default;
+        }
+
+        .cell.flagged { color: red; }
+        .cell.mine { background-color: #ff4d4d; border: 1px solid #999; }
+
+        /* Màu sắc cho các con số */
+        .cell[data-total="1"] { color: blue; }
+        .cell[data-total="2"] { color: green; }
+        .cell[data-total="3"] { color: red; }
+        .cell[data-total="4"] { color: darkblue; }
+        .cell[data-total="5"] { color: brown; }
+        .cell[data-total="6"] { color: teal; }
+        .cell[data-total="7"] { color: black; }
+        .cell[data-total="8"] { color: gray; }
+
+        .status-msg {
+            margin-top: 20px;
+            height: 30px;
+            color: #4cd137;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <h1>Xin Chào Thế Giới!</h1>
-    <p>Tôi đang dùng GitHub Pages để chia sẻ nội dung này.</p>
+
+    <h1>DÒ MÌN</h1>
+    
+    <div class="game-info">
+        <span>🚩 <span id="flags-left">10</span></span>
+        <button id="reset-btn">Chơi Lại</button>
+        <span>⏱️ <span id="timer">0</span></span>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="status-msg" id="result"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const grid = document.getElementById('grid');
+            const flagsLeftDisplay = document.getElementById('flags-left');
+            const resultDisplay = document.getElementById('result');
+            const timerDisplay = document.getElementById('timer');
+            const resetBtn = document.getElementById('reset-btn');
+
+            // Cấu hình game
+            const width = 10;
+            const bombAmount = 12;
+            let flags = 0;
+            let squares = [];
+            let isGameOver = false;
+            let time = 0;
+            let timerId;
+
+            // Khởi tạo Game
+            function createBoard() {
+                // Reset trạng thái
+                grid.innerHTML = '';
+                squares = [];
+                isGameOver = false;
+                flags = 0;
+                time = 0;
+                clearInterval(timerId);
+                timerDisplay.innerText = '0';
+                resultDisplay.innerText = '';
+                flagsLeftDisplay.innerText = bombAmount;
+                
+                // Thiết lập CSS Grid
+                grid.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
+                grid.style.gridTemplateRows = `repeat(${width}, 1fr)`;
+
+                // 1. Tạo mảng chứa bom và ô trống ngẫu nhiên
+                // Tạo mảng bom
+                const bombsArray = Array(bombAmount).fill('bomb');
+                // Tạo mảng trống
+                const emptyArray = Array(width * width - bombAmount).fill('valid');
+                // Nối và trộn ngẫu nhiên (Fisher-Yates Shuffle logic đơn giản hóa)
+                const gameArray = emptyArray.concat(bombsArray);
+                const shuffledArray = gameArray.sort(() => Math.random() - 0.5);
+
+                // 2. Render các ô ra màn hình
+                for (let i = 0; i < width * width; i++) {
+                    const square = document.createElement('div');
+                    square.setAttribute('id', i);
+                    square.classList.add('cell');
+                    // Gán dữ liệu bom hay không
+                    square.dataset.type = shuffledArray[i];
+                    grid.appendChild(square);
+                    squares.push(square);
+
+                    // Xử lý sự kiện chuột (Left click & Right click)
+                    square.addEventListener('click', function(e) {
+                        click(square);
+                    });
+                    square.addEventListener('contextmenu', function(e) {
+                        e.preventDefault();
+                        addFlag(square);
+                    });
+                }
+
+                // 3. Tính toán số bom xung quanh mỗi ô (Logic cốt lõi)
+                for (let i = 0; i < squares.length; i++) {
+                    let total = 0;
+                    const isLeftEdge = (i % width === 0);
+                    const isRightEdge = (i % width === width - 1);
+
+                    if (squares[i].dataset.type === 'valid') {
+                        // Kiểm tra 8 ô xung quanh
+                        if (i > 0 && !isLeftEdge && squares[i - 1].dataset.type === 'bomb') total++; // Trái
+                        if (i > width - 1 && !isRightEdge && squares[i + 1 - width].dataset.type === 'bomb') total++; // Trên Phải
+                        if (i > width && squares[i - width].dataset.type === 'bomb') total++; // Trên
+                        if (i > width + 1 && !isLeftEdge && squares[i - 1 - width].dataset.type === 'bomb') total++; // Trên Trái
+                        if (i < width * width - 1 && !isRightEdge && squares[i + 1].dataset.type === 'bomb') total++; // Phải
+                        if (i < width * width - width + 1 && !isLeftEdge && squares[i - 1 + width].dataset.type === 'bomb') total++; // Dưới Trái
+                        if (i < width * width - width - 1 && !isRightEdge && squares[i + 1 + width].dataset.type === 'bomb') total++; // Dưới Phải
+                        if (i < width * width - width && squares[i + width].dataset.type === 'bomb') total++; // Dưới
+                        
+                        // Lưu số lượng bom xung quanh vào data attribute
+                        squares[i].setAttribute('data-total', total);
+                    }
+                }
+                
+                // Bắt đầu đếm giờ
+                timerId = setInterval(() => {
+                    if(!isGameOver) {
+                        time++;
+                        timerDisplay.innerText = time;
+                    }
+                }, 1000);
+            }
+
+            createBoard();
+
+            // Chức năng cắm cờ (Right Click)
+            function addFlag(square) {
+                if (isGameOver) return;
+                if (!square.classList.contains('revealed') && (flags < bombAmount)) {
+                    if (!square.classList.contains('flagged')) {
+                        square.classList.add('flagged');
+                        square.innerHTML = '🚩';
+                        flags++;
+                        flagsLeftDisplay.innerHTML = bombAmount - flags;
+                        checkForWin();
+                    } else {
+                        square.classList.remove('flagged');
+                        square.innerHTML = '';
+                        flags--;
+                        flagsLeftDisplay.innerHTML = bombAmount - flags;
+                    }
+                } else if (square.classList.contains('flagged')) {
+                     // Cho phép bỏ cờ ngay cả khi đã hết cờ
+                    square.classList.remove('flagged');
+                    square.innerHTML = '';
+                    flags--;
+                    flagsLeftDisplay.innerHTML = bombAmount - flags;
+                }
+            }
+
+            // Chức năng click vào ô (Left Click)
+            function click(square) {
+                let currentId = square.id;
+                if (isGameOver) return;
+                if (square.classList.contains('revealed') || square.classList.contains('flagged')) return;
+
+                if (square.dataset.type === 'bomb') {
+                    gameOver(square);
+                } else {
+                    let total = square.getAttribute('data-total');
+                    if (total != 0) {
+                        square.classList.add('revealed');
+                        square.innerText = total;
+                        return;
+                    }
+                    // Nếu ô trống (0 bom xung quanh), dùng đệ quy mở rộng
+                    checkSquare(square, currentId);
+                }
+                square.classList.add('revealed');
+                checkForWin();
+            }
+
+            // Thuật toán loang (Flood Fill) để mở các ô trống liên tiếp
+            function checkSquare(square, currentId) {
+                const isLeftEdge = (currentId % width === 0);
+                const isRightEdge = (currentId % width === width - 1);
+
+                setTimeout(() => {
+                    if (isLeftEdge) { // Kiểm tra biên trái
+                        /* Logic đệ quy kiểm tra các ô xung quanh không vi phạm biên */
+                         // (Mã đã được tối ưu để tránh lặp code, nhưng để rõ ràng tôi viết tường minh)
+                    }
+                    
+                    // Logic mở rộng đệ quy: Kiểm tra 8 hướng
+                    // Chuyển ID từ string sang int
+                    const id = parseInt(currentId);
+                    
+                    // Helper function để check và mở ô
+                    const checkNeighbor = (neighborId) => {
+                        const neighbor = document.getElementById(neighborId);
+                        click(neighbor);
+                    };
+
+                    if (id > 0 && !isLeftEdge) checkNeighbor(id - 1);
+                    if (id > width - 1 && !isRightEdge) checkNeighbor(id + 1 - width);
+                    if (id > width) checkNeighbor(id - width);
+                    if (id > width + 1 && !isLeftEdge) checkNeighbor(id - 1 - width);
+                    if (id < width * width - 1 && !isRightEdge) checkNeighbor(id + 1);
+                    if (id < width * width - width + 1 && !isLeftEdge) checkNeighbor(id - 1 + width);
+                    if (id < width * width - width - 1 && !isRightEdge) checkNeighbor(id + 1 + width);
+                    if (id < width * width - width) checkNeighbor(id + width);
+                }, 10);
+            }
+
+            // Xử lý khi thua
+            function gameOver(square) {
+                resultDisplay.innerHTML = '💥 BẠN ĐÃ THUA! 💥';
+                resultDisplay.style.color = '#ff4d4d';
+                isGameOver = true;
+                clearInterval(timerId);
+
+                // Hiện tất cả bom
+                squares.forEach(square => {
+                    if (square.dataset.type === 'bomb') {
+                        square.innerHTML = '💣';
+                        square.classList.remove('flagged');
+                        square.classList.add('revealed', 'mine');
+                    }
+                });
+            }
+
+            // Kiểm tra điều kiện thắng
+            function checkForWin() {
+                let matches = 0;
+                let revealedCount = 0;
+
+                for (let i = 0; i < squares.length; i++) {
+                    if (squares[i].classList.contains('flagged') && squares[i].dataset.type === 'bomb') {
+                        matches++;
+                    }
+                    if (squares[i].classList.contains('revealed') && squares[i].dataset.type === 'valid') {
+                        revealedCount++;
+                    }
+                }
+                
+                // Thắng nếu mở hết ô an toàn
+                if (revealedCount === (width * width - bombAmount)) {
+                    resultDisplay.innerHTML = '🏆 CHIẾN THẮNG! 🏆';
+                    isGameOver = true;
+                    clearInterval(timerId);
+                    flagsLeftDisplay.innerText = '0';
+                }
+            }
+
+            // Reset Game
+            resetBtn.addEventListener('click', () => {
+                createBoard();
+            })
+        });
+    </script>
 </body>
 </html>
