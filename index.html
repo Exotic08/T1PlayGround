@@ -7,7 +7,7 @@
     <meta http-equiv="Expires" content="0" />
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minesweeper Chord Edition</title>
+    <title>Minesweeper Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         /* --- 1. SETTINGS & VARIABLES --- */
@@ -190,7 +190,7 @@
         <h1 style="font-size: 2.5rem;">MENU</h1>
         <button class="btn btn-primary" onclick="App.play()">🎮 CHƠI NGAY</button>
         <button class="btn" onclick="App.leaderboard('wins')">🏆 BẢNG XẾP HẠNG</button>
-        <div class="version-tag">Ver: 2.1 (Chord)</div>
+        <div class="version-tag">Ver: 2.2 (Fix Rank)</div>
     </div>
 
     <div id="screen-game" class="screen">
@@ -344,6 +344,11 @@
                             let u = users[key];
                             if (typeof u === 'number') u = { wins: u, losses: 0, bestTime: 999999, desc: "" };
                             if (typeof u.losses === 'undefined') u.losses = 0;
+                            
+                            // LOGIC MỚI: Chỉ thêm vào nếu đã chơi ít nhất 1 trận (Thắng hoặc Thua)
+                            let totalGames = (u.wins || 0) + (u.losses || 0);
+                            if (totalGames === 0) return; 
+
                             if (type === 'time' && (!u.bestTime || u.bestTime >= 999999)) return;
                             arr.push({ name: key, ...u });
                         });
@@ -437,36 +442,20 @@
             click: (i) => {
                 if(Game.state.over) return;
                 const cell = Game.dom[i];
-                
-                // LOGIC CHORD: CLICK VÀO Ô ĐÃ MỞ CÓ SỐ
-                if(cell.classList.contains('revealed') && Game.grid[i] > 0) {
-                    Game.chord(i);
-                    return;
-                }
-
-                // LOGIC BÌNH THƯỜNG
+                if(cell.classList.contains('revealed') && Game.grid[i] > 0) { Game.chord(i); return; }
                 Game.state.isPC ? Game.dig(i) : (Game.state.mode==='flag'?Game.toggleFlag(i):Game.dig(i)); 
             },
 
-            // TÍNH NĂNG CHORD: MỞ NHANH
             chord: (i) => {
                 const val = Game.grid[i];
                 const neighbors = Game.getNeighbors(i);
                 const flags = neighbors.filter(n => Game.dom[n].classList.contains('flagged')).length;
-
                 if (flags === val) {
                     Game.vib(20);
-                    // Mở tất cả ô hàng xóm chưa mở và chưa cắm cờ
                     neighbors.forEach(n => {
-                        if (!Game.dom[n].classList.contains('revealed') && !Game.dom[n].classList.contains('flagged')) {
-                            Game.dig(n);
-                        }
+                        if (!Game.dom[n].classList.contains('revealed') && !Game.dom[n].classList.contains('flagged')) { Game.dig(n); }
                     });
-                } else {
-                    // Hiệu ứng rung lắc nếu chưa đủ cờ
-                    Game.dom[i].classList.add('chord-error');
-                    setTimeout(()=>Game.dom[i].classList.remove('chord-error'), 300);
-                }
+                } else { Game.dom[i].classList.add('chord-error'); setTimeout(()=>Game.dom[i].classList.remove('chord-error'), 300); }
             },
 
             toggleFlag: (i) => {
