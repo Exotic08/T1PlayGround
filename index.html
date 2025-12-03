@@ -2,349 +2,346 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minesweeper - Cỗ Máy Lập Trình</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minesweeper Online</title>
     <style>
-        :root {
-            --bg-color: #1a1a1a;
-            --board-bg: #ccc;
-            --cell-bg: #bdbdbd;
-            --cell-hover: #cfcfcf;
-            --cell-revealed: #e0e0e0;
-            --border-light: #fff;
-            --border-dark: #7b7b7b;
-            --accent: #ff3860;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            user-select: none; /* Ngăn chọn text khi click nhanh */
-        }
-
-        h1 { margin-bottom: 10px; font-weight: 300; letter-spacing: 2px; }
-
-        .game-info {
-            display: flex;
-            justify-content: space-between;
-            width: 300px;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-            background: #333;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        #reset-btn {
-            background: var(--accent);
-            border: none;
-            color: white;
-            padding: 5px 15px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-weight: bold;
-            transition: transform 0.1s;
-        }
-        #reset-btn:active { transform: scale(0.95); }
-
-        .grid {
-            display: grid;
-            width: 300px;
-            height: 300px;
-            background-color: var(--board-bg);
-            border: 4px solid #999;
-            /* Grid layout sẽ được set bởi JS dựa trên size */
-        }
-
-        .cell {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            font-size: 18px;
-            cursor: pointer;
-            background-color: var(--cell-bg);
-            
-            /* Hiệu ứng 3D cổ điển */
-            border-top: 3px solid var(--border-light);
-            border-left: 3px solid var(--border-light);
-            border-bottom: 3px solid var(--border-dark);
-            border-right: 3px solid var(--border-dark);
-            box-sizing: border-box; 
-        }
-
-        .cell:hover { background-color: var(--cell-hover); }
-
-        .cell.revealed {
-            background-color: var(--cell-revealed);
-            border: 1px solid #999; /* Làm phẳng ô đã mở */
-            cursor: default;
-        }
-
-        .cell.flagged { color: red; }
-        .cell.mine { background-color: #ff4d4d; border: 1px solid #999; }
-
-        /* Màu sắc cho các con số */
-        .cell[data-total="1"] { color: blue; }
-        .cell[data-total="2"] { color: green; }
-        .cell[data-total="3"] { color: red; }
-        .cell[data-total="4"] { color: darkblue; }
-        .cell[data-total="5"] { color: brown; }
-        .cell[data-total="6"] { color: teal; }
-        .cell[data-total="7"] { color: black; }
-        .cell[data-total="8"] { color: gray; }
-
-        .status-msg {
-            margin-top: 20px;
-            height: 30px;
-            color: #4cd137;
-            font-weight: bold;
-        }
+        /* GIỮ NGUYÊN GIAO DIỆN CŨ VÌ ĐÃ TỐI ƯU */
+        :root { --bg-dark: #0f172a; --panel-bg: #1e293b; --primary: #3b82f6; --accent: #10b981; --danger: #ef4444; --text-light: #f1f5f9; --text-dim: #94a3b8; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: var(--text-light); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; touch-action: manipulation; }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 20px; animation: fadeIn 0.3s ease-out; }
+        .screen.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        h1 { color: var(--primary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; text-align: center; }
+        h2 { color: var(--accent); margin-bottom: 15px; }
+        .btn { background: var(--panel-bg); color: var(--text-light); border: 2px solid var(--primary); padding: 14px 24px; margin: 8px; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; max-width: 280px; transition: transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn:active { transform: scale(0.96); }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-danger { border-color: var(--danger); color: var(--danger); }
+        .btn-back { position: absolute; top: 15px; left: 15px; width: auto; padding: 8px 16px; font-size: 0.9rem; z-index: 100; background: rgba(30, 41, 59, 0.8); border: 1px solid var(--text-dim); }
+        input { padding: 15px; border-radius: 10px; background: var(--panel-bg); color: white; border: 1px solid var(--text-dim); font-size: 1.1rem; margin-bottom: 20px; text-align: center; width: 100%; max-width: 280px; }
+        input:focus { outline: 2px solid var(--primary); border-color: transparent; }
+        .game-wrapper { width: 95vw; max-width: 400px; background: var(--panel-bg); padding: 8px; border-radius: 12px; display: flex; justify-content: center; align-items: center; aspect-ratio: 1/1; box-shadow: 0 10px 20px rgba(0,0,0,0.3); position: relative; }
+        .grid { display: grid; width: 100%; height: 100%; gap: 2px; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); }
+        .cell { background: #475569; border-radius: 3px; display: flex; justify-content: center; align-items: center; font-weight: 800; font-size: 16px; cursor: pointer; user-select: none; transition: background 0.1s; }
+        .cell.revealed { background: #334155; border: 1px solid #1e293b; cursor: default; }
+        .cell.flagged { background: #475569; }
+        .cell.bomb { background: var(--danger) !important; color: white !important; }
+        .cell[data-v="1"] { color: #60a5fa; } .cell[data-v="2"] { color: #4ade80; } .cell[data-v="3"] { color: #f87171; } .cell[data-v="4"] { color: #c084fc; } .cell[data-v="5"] { color: #fbbf24; }
+        .header-hud { display: flex; justify-content: space-between; width: 95vw; max-width: 400px; margin-bottom: 15px; font-weight: bold; font-size: 1.2rem; background: rgba(30, 41, 59, 0.5); padding: 10px; border-radius: 8px; }
+        .controls { display: flex; gap: 10px; margin-top: 15px; width: 95vw; max-width: 400px; }
+        .mode-btn { flex: 1; padding: 15px; border-radius: 10px; border: none; background: #334155; color: #94a3b8; font-weight: bold; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+        .mode-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 0 #1d4ed8; transform: translateY(-2px); }
+        .mode-btn.active.flag { background: var(--danger); box-shadow: 0 4px 0 #b91c1c; }
+        .mode-btn:active { transform: translateY(0); box-shadow: none !important;}
+        .user-bar { position: absolute; top: 0; right: 0; padding: 10px 15px; background: rgba(15, 23, 42, 0.9); font-size: 0.9rem; z-index: 50; border-bottom-left-radius: 10px; font-weight: bold; border-left: 1px solid #334155; border-bottom: 1px solid #334155; }
+        .lb-container { width: 100%; max-width: 350px; background: var(--panel-bg); border-radius: 12px; max-height: 60vh; overflow-y: auto; border: 1px solid #334155; }
+        .lb-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid var(--bg-dark); }
+        .lb-item:last-child { border-bottom: none; }
+        .lb-rank { color: var(--text-dim); font-weight: bold; width: 30px;}
+        .lb-name { flex: 1; font-weight: bold; }
+        .lb-score { color: var(--accent); font-weight: bold; }
+        .result-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(15, 23, 42, 0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 20; border-radius: 12px; animation: fadeIn 0.2s; }
+        .result-overlay.show { display: flex; }
+        .result-title { font-size: 2rem; margin-bottom: 20px; font-weight: 800; text-align: center;}
     </style>
 </head>
 <body>
 
-    <h1>DÒ MÌN</h1>
-    
-    <div class="game-info">
-        <span>🚩 <span id="flags-left">10</span></span>
-        <button id="reset-btn">Chơi Lại</button>
-        <span>⏱️ <span id="timer">0</span></span>
+    <div id="user-info" class="user-bar" style="display: none;">
+        👤 <span id="display-name">...</span> | 🏆 <span id="display-wins">...</span>
     </div>
 
-    <div class="grid" id="grid"></div>
-    <div class="status-msg" id="result"></div>
+    <div id="screen-login" class="screen active">
+        <h1>Minesweeper Online</h1>
+        <p style="color: var(--text-dim); margin-bottom: 10px;">Dữ liệu được lưu trên mây ☁️</p>
+        <input type="text" id="username-input" placeholder="Nhập tên của bạn..." maxlength="12">
+        <button class="btn btn-primary" id="btn-login">BẮT ĐẦU 🚀</button>
+        <div id="loading" style="display:none; color: var(--accent); margin-top:10px;">Đang kết nối server...</div>
+    </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const grid = document.getElementById('grid');
-            const flagsLeftDisplay = document.getElementById('flags-left');
-            const resultDisplay = document.getElementById('result');
-            const timerDisplay = document.getElementById('timer');
-            const resetBtn = document.getElementById('reset-btn');
+    <div id="screen-menu" class="screen">
+        <h1>MENU</h1>
+        <button class="btn btn-primary" onclick="App.switchScreen('game')">🎮 CHƠI NGAY</button>
+        <button class="btn" onclick="App.showLeaderboard()">🏆 BẢNG XẾP HẠNG</button>
+        <button class="btn btn-danger" onclick="App.logout()">Thoát</button>
+    </div>
 
-            // Cấu hình game
-            const width = 10;
-            const bombAmount = 12;
-            let flags = 0;
-            let squares = [];
-            let isGameOver = false;
-            let time = 0;
-            let timerId;
+    <div id="screen-leaderboard" class="screen">
+        <button class="btn btn-back" onclick="App.switchScreen('menu')">⬅ Menu</button>
+        <h2>TOP SERVER</h2>
+        <div class="lb-container">
+            <div id="lb-list">Loading...</div>
+        </div>
+    </div>
 
-            // Khởi tạo Game
-            function createBoard() {
-                // Reset trạng thái
-                grid.innerHTML = '';
-                squares = [];
-                isGameOver = false;
-                flags = 0;
-                time = 0;
-                clearInterval(timerId);
-                timerDisplay.innerText = '0';
-                resultDisplay.innerText = '';
-                flagsLeftDisplay.innerText = bombAmount;
-                
-                // Thiết lập CSS Grid
-                grid.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
-                grid.style.gridTemplateRows = `repeat(${width}, 1fr)`;
+    <div id="screen-game" class="screen">
+        <button class="btn btn-back" onclick="App.switchScreen('menu')">⬅ Thoát</button>
+        <div class="header-hud">
+            <span>🚩 <span id="game-flags">0</span></span>
+            <span>⏱️ <span id="game-timer">0</span></span>
+        </div>
+        <div class="game-wrapper">
+            <div id="grid" class="grid"></div>
+            <div id="result-overlay" class="result-overlay">
+                <div id="result-msg" class="result-title">THẮNG!</div>
+                <button class="btn btn-primary" onclick="Game.init()">Chơi Lại</button>
+                <button class="btn" onclick="App.switchScreen('menu')" style="margin-top: 10px;">Về Menu</button>
+            </div>
+        </div>
+        <div class="controls">
+            <button id="btn-dig" class="mode-btn active" onclick="Game.setMode('dig')">⛏️ ĐÀO</button>
+            <button id="btn-flag" class="mode-btn flag" onclick="Game.setMode('flag')">🚩 CỜ</button>
+        </div>
+    </div>
 
-                // 1. Tạo mảng chứa bom và ô trống ngẫu nhiên
-                // Tạo mảng bom
-                const bombsArray = Array(bombAmount).fill('bomb');
-                // Tạo mảng trống
-                const emptyArray = Array(width * width - bombAmount).fill('valid');
-                // Nối và trộn ngẫu nhiên (Fisher-Yates Shuffle logic đơn giản hóa)
-                const gameArray = emptyArray.concat(bombsArray);
-                const shuffledArray = gameArray.sort(() => Math.random() - 0.5);
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, get, set, child, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-                // 2. Render các ô ra màn hình
-                for (let i = 0; i < width * width; i++) {
-                    const square = document.createElement('div');
-                    square.setAttribute('id', i);
-                    square.classList.add('cell');
-                    // Gán dữ liệu bom hay không
-                    square.dataset.type = shuffledArray[i];
-                    grid.appendChild(square);
-                    squares.push(square);
+        // --- CẤU HÌNH FIREBASE (BẠN PHẢI DÁN CONFIG CỦA BẠN VÀO ĐÂY) ---
+        const firebaseConfig = {
+  apiKey: "AIzaSyDXn3IK3Td2WyegZkU0m1hESQQSRLM1Zb8",
+  authDomain: "minesweeper-a7423.firebaseapp.com",
+  databaseURL: "https://minesweeper-a7423-default-rtdb.firebaseio.com",
+  projectId: "minesweeper-a7423",
+  storageBucket: "minesweeper-a7423.firebasestorage.app",
+  messagingSenderId: "305681879682",
+  appId: "1:305681879682:web:31f1a90362b20b06cbda9b",
+  measurementId: "G-XBJQF7Q242"
+};
 
-                    // Xử lý sự kiện chuột (Left click & Right click)
-                    square.addEventListener('click', function(e) {
-                        click(square);
-                    });
-                    square.addEventListener('contextmenu', function(e) {
-                        e.preventDefault();
-                        addFlag(square);
-                    });
-                }
+        // Khởi tạo Firebase
+        let db;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getDatabase(app);
+            console.log("Firebase connected");
+        } catch (e) {
+            console.error("Lỗi kết nối Firebase. Hãy kiểm tra config!", e);
+        }
 
-                // 3. Tính toán số bom xung quanh mỗi ô (Logic cốt lõi)
-                for (let i = 0; i < squares.length; i++) {
-                    let total = 0;
-                    const isLeftEdge = (i % width === 0);
-                    const isRightEdge = (i % width === width - 1);
-
-                    if (squares[i].dataset.type === 'valid') {
-                        // Kiểm tra 8 ô xung quanh
-                        if (i > 0 && !isLeftEdge && squares[i - 1].dataset.type === 'bomb') total++; // Trái
-                        if (i > width - 1 && !isRightEdge && squares[i + 1 - width].dataset.type === 'bomb') total++; // Trên Phải
-                        if (i > width && squares[i - width].dataset.type === 'bomb') total++; // Trên
-                        if (i > width + 1 && !isLeftEdge && squares[i - 1 - width].dataset.type === 'bomb') total++; // Trên Trái
-                        if (i < width * width - 1 && !isRightEdge && squares[i + 1].dataset.type === 'bomb') total++; // Phải
-                        if (i < width * width - width + 1 && !isLeftEdge && squares[i - 1 + width].dataset.type === 'bomb') total++; // Dưới Trái
-                        if (i < width * width - width - 1 && !isRightEdge && squares[i + 1 + width].dataset.type === 'bomb') total++; // Dưới Phải
-                        if (i < width * width - width && squares[i + width].dataset.type === 'bomb') total++; // Dưới
-                        
-                        // Lưu số lượng bom xung quanh vào data attribute
-                        squares[i].setAttribute('data-total', total);
-                    }
-                }
-                
-                // Bắt đầu đếm giờ
-                timerId = setInterval(() => {
-                    if(!isGameOver) {
-                        time++;
-                        timerDisplay.innerText = time;
-                    }
-                }, 1000);
-            }
-
-            createBoard();
-
-            // Chức năng cắm cờ (Right Click)
-            function addFlag(square) {
-                if (isGameOver) return;
-                if (!square.classList.contains('revealed') && (flags < bombAmount)) {
-                    if (!square.classList.contains('flagged')) {
-                        square.classList.add('flagged');
-                        square.innerHTML = '🚩';
-                        flags++;
-                        flagsLeftDisplay.innerHTML = bombAmount - flags;
-                        checkForWin();
+        // --- QUẢN LÝ DỮ LIỆU (ĐÁM MÂY) ---
+        const Cloud = {
+            // Lấy điểm của 1 user
+            getUser: async (name) => {
+                if(!db) return 0;
+                const dbRef = ref(db);
+                try {
+                    const snapshot = await get(child(dbRef, `users/${name}`));
+                    if (snapshot.exists()) {
+                        return snapshot.val();
                     } else {
-                        square.classList.remove('flagged');
-                        square.innerHTML = '';
-                        flags--;
-                        flagsLeftDisplay.innerHTML = bombAmount - flags;
+                        return 0; // Chưa chơi bao giờ
                     }
-                } else if (square.classList.contains('flagged')) {
-                     // Cho phép bỏ cờ ngay cả khi đã hết cờ
-                    square.classList.remove('flagged');
-                    square.innerHTML = '';
-                    flags--;
-                    flagsLeftDisplay.innerHTML = bombAmount - flags;
+                } catch (error) {
+                    console.error(error);
+                    return 0;
                 }
+            },
+
+            // Cập nhật điểm
+            updateWin: async (name, currentWins) => {
+                if(!db) return;
+                const newScore = currentWins + 1;
+                // Cập nhật lên server
+                await set(ref(db, 'users/' + name), newScore);
+                return newScore;
+            },
+
+            // Lấy toàn bộ bảng xếp hạng
+            getAllUsers: async () => {
+                if(!db) return {};
+                const dbRef = ref(db);
+                try {
+                    const snapshot = await get(child(dbRef, `users`));
+                    if (snapshot.exists()) return snapshot.val();
+                    return {};
+                } catch (error) { return {}; }
             }
+        };
 
-            // Chức năng click vào ô (Left Click)
-            function click(square) {
-                let currentId = square.id;
-                if (isGameOver) return;
-                if (square.classList.contains('revealed') || square.classList.contains('flagged')) return;
+        // --- APP LOGIC (Đã sửa để dùng Cloud) ---
+        window.App = {
+            currentUser: null,
+            currentWins: 0,
 
-                if (square.dataset.type === 'bomb') {
-                    gameOver(square);
-                } else {
-                    let total = square.getAttribute('data-total');
-                    if (total != 0) {
-                        square.classList.add('revealed');
-                        square.innerText = total;
-                        return;
-                    }
-                    // Nếu ô trống (0 bom xung quanh), dùng đệ quy mở rộng
-                    checkSquare(square, currentId);
-                }
-                square.classList.add('revealed');
-                checkForWin();
-            }
-
-            // Thuật toán loang (Flood Fill) để mở các ô trống liên tiếp
-            function checkSquare(square, currentId) {
-                const isLeftEdge = (currentId % width === 0);
-                const isRightEdge = (currentId % width === width - 1);
-
-                setTimeout(() => {
-                    if (isLeftEdge) { // Kiểm tra biên trái
-                        /* Logic đệ quy kiểm tra các ô xung quanh không vi phạm biên */
-                         // (Mã đã được tối ưu để tránh lặp code, nhưng để rõ ràng tôi viết tường minh)
-                    }
-                    
-                    // Logic mở rộng đệ quy: Kiểm tra 8 hướng
-                    // Chuyển ID từ string sang int
-                    const id = parseInt(currentId);
-                    
-                    // Helper function để check và mở ô
-                    const checkNeighbor = (neighborId) => {
-                        const neighbor = document.getElementById(neighborId);
-                        click(neighbor);
-                    };
-
-                    if (id > 0 && !isLeftEdge) checkNeighbor(id - 1);
-                    if (id > width - 1 && !isRightEdge) checkNeighbor(id + 1 - width);
-                    if (id > width) checkNeighbor(id - width);
-                    if (id > width + 1 && !isLeftEdge) checkNeighbor(id - 1 - width);
-                    if (id < width * width - 1 && !isRightEdge) checkNeighbor(id + 1);
-                    if (id < width * width - width + 1 && !isLeftEdge) checkNeighbor(id - 1 + width);
-                    if (id < width * width - width - 1 && !isRightEdge) checkNeighbor(id + 1 + width);
-                    if (id < width * width - width) checkNeighbor(id + width);
-                }, 10);
-            }
-
-            // Xử lý khi thua
-            function gameOver(square) {
-                resultDisplay.innerHTML = '💥 BẠN ĐÃ THUA! 💥';
-                resultDisplay.style.color = '#ff4d4d';
-                isGameOver = true;
-                clearInterval(timerId);
-
-                // Hiện tất cả bom
-                squares.forEach(square => {
-                    if (square.dataset.type === 'bomb') {
-                        square.innerHTML = '💣';
-                        square.classList.remove('flagged');
-                        square.classList.add('revealed', 'mine');
-                    }
-                });
-            }
-
-            // Kiểm tra điều kiện thắng
-            function checkForWin() {
-                let matches = 0;
-                let revealedCount = 0;
-
-                for (let i = 0; i < squares.length; i++) {
-                    if (squares[i].classList.contains('flagged') && squares[i].dataset.type === 'bomb') {
-                        matches++;
-                    }
-                    if (squares[i].classList.contains('revealed') && squares[i].dataset.type === 'valid') {
-                        revealedCount++;
-                    }
-                }
+            login: async () => {
+                const input = document.getElementById('username-input');
+                const name = input.value.trim().replace(/[.#$\[\]]/g, ""); // Firebase không thích ký tự đặc biệt
                 
-                // Thắng nếu mở hết ô an toàn
-                if (revealedCount === (width * width - bombAmount)) {
-                    resultDisplay.innerHTML = '🏆 CHIẾN THẮNG! 🏆';
-                    isGameOver = true;
-                    clearInterval(timerId);
-                    flagsLeftDisplay.innerText = '0';
+                if (!name) return alert("Vui lòng nhập tên!");
+                
+                document.getElementById('btn-login').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+
+                // Lấy dữ liệu từ Cloud
+                const wins = await Cloud.getUser(name);
+                
+                App.currentUser = name;
+                App.currentWins = wins;
+                
+                App.updateHUD();
+                document.getElementById('user-info').style.display = 'block';
+                
+                document.getElementById('btn-login').style.display = 'flex';
+                document.getElementById('loading').style.display = 'none';
+                
+                App.switchScreen('menu');
+            },
+
+            logout: () => {
+                App.currentUser = null;
+                location.reload(); // Reload cho sạch
+            },
+
+            updateHUD: () => {
+                if (App.currentUser) {
+                    document.getElementById('display-name').innerText = App.currentUser;
+                    document.getElementById('display-wins').innerText = App.currentWins;
+                }
+            },
+
+            recordWin: async () => {
+                if (!App.currentUser) return;
+                // Lưu lên mây
+                const newScore = await Cloud.updateWin(App.currentUser, App.currentWins);
+                App.currentWins = newScore;
+                App.updateHUD();
+            },
+
+            switchScreen: (screenId) => {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById('screen-' + screenId).classList.add('active');
+                if (screenId === 'game') window.Game.init();
+            },
+
+            showLeaderboard: async () => {
+                const list = document.getElementById('lb-list');
+                list.innerHTML = 'Đang tải dữ liệu server...';
+                App.switchScreen('leaderboard');
+
+                const users = await Cloud.getAllUsers();
+                const sorted = Object.entries(users).sort((a, b) => b[1] - a[1]);
+
+                list.innerHTML = '';
+                if (sorted.length === 0) {
+                    list.innerHTML = '<div style="padding:15px; text-align:center;">Chưa có dữ liệu</div>';
+                } else {
+                    sorted.forEach((u, index) => {
+                        const isMe = u[0] === App.currentUser;
+                        list.innerHTML += `
+                            <div class="lb-item" style="${isMe ? 'background: rgba(59, 130, 246, 0.1);' : ''}">
+                                <span class="lb-rank">#${index + 1}</span>
+                                <span class="lb-name">${u[0]} ${isMe ? '(Bạn)' : ''}</span>
+                                <span class="lb-score">${u[1]} Wins</span>
+                            </div>
+                        `;
+                    });
                 }
             }
+        };
 
-            // Reset Game
-            resetBtn.addEventListener('click', () => {
-                createBoard();
-            })
-        });
+        // Gắn sự kiện click cho nút Login (vì module không gọi trực tiếp từ HTML onclick được đôi khi)
+        document.getElementById('btn-login').onclick = App.login;
+
+        // --- GAME ENGINE (GIỮ NGUYÊN LOGIC CORE) ---
+        window.Game = {
+            cfg: { w: 10, bombs: 12 },
+            state: {},
+            dom: {},
+
+            init: () => {
+                Game.state = { grid: Array(100).fill(0), isOver: false, isFirst: true, flags: 0, safeRevealed: 0, mode: 'dig', time: 0, timerId: null };
+                const gridEl = document.getElementById('grid');
+                gridEl.innerHTML = '';
+                Game.dom.cells = [];
+                for (let i = 0; i < 100; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.onclick = () => Game.handleClick(i);
+                    cell.oncontextmenu = (e) => { e.preventDefault(); Game.toggleFlag(i); };
+                    gridEl.appendChild(cell);
+                    Game.dom.cells.push(cell);
+                }
+                document.getElementById('result-overlay').classList.remove('show');
+                Game.updateStats();
+                clearInterval(Game.state.timerId);
+                document.getElementById('game-timer').innerText = '0';
+            },
+
+            setMode: (mode) => {
+                Game.state.mode = mode;
+                document.getElementById('btn-dig').className = `mode-btn ${mode==='dig'?'active':''}`;
+                document.getElementById('btn-flag').className = `mode-btn flag ${mode==='flag'?'active':''}`;
+                if(navigator.vibrate) navigator.vibrate(20);
+            },
+
+            updateStats: () => { document.getElementById('game-flags').innerText = Game.cfg.bombs - Game.state.flags; },
+
+            handleClick: (idx) => {
+                if (Game.state.isOver) return;
+                Game.state.mode === 'flag' ? Game.toggleFlag(idx) : Game.dig(idx);
+            },
+
+            toggleFlag: (idx) => {
+                const cell = Game.dom.cells[idx];
+                if (cell.classList.contains('revealed')) return;
+                if (cell.classList.contains('flagged')) { cell.classList.remove('flagged'); cell.innerText=''; Game.state.flags--; }
+                else if (Game.state.flags < Game.cfg.bombs) { cell.classList.add('flagged'); cell.innerText='🚩'; Game.state.flags++; if(navigator.vibrate) navigator.vibrate(30); }
+                Game.updateStats();
+            },
+
+            dig: (idx) => {
+                const cell = Game.dom.cells[idx];
+                if (cell.classList.contains('flagged') || cell.classList.contains('revealed')) return;
+                if (Game.state.isFirst) {
+                    Game.placeBombs(idx); Game.state.isFirst = false;
+                    Game.state.timerId = setInterval(() => { Game.state.time++; document.getElementById('game-timer').innerText = Game.state.time; }, 1000);
+                }
+                if (Game.state.grid[idx] === 'B') Game.gameOver(false, idx);
+                else { Game.reveal(idx); Game.checkWin(); }
+            },
+
+            reveal: (idx) => {
+                const cell = Game.dom.cells[idx];
+                if (cell.classList.contains('revealed')) return;
+                cell.classList.add('revealed'); Game.state.safeRevealed++;
+                const val = Game.state.grid[idx];
+                if (val > 0) { cell.innerText = val; cell.setAttribute('data-v', val); }
+                else { Game.getNeighbors(idx).forEach(n => Game.reveal(n)); }
+            },
+
+            placeBombs: (safeIdx) => {
+                let count = 0;
+                while (count < Game.cfg.bombs) {
+                    let r = Math.floor(Math.random() * 100);
+                    if (r !== safeIdx && Game.state.grid[r] !== 'B') { Game.state.grid[r] = 'B'; count++; }
+                }
+                for (let i = 0; i < 100; i++) {
+                    if (Game.state.grid[i] === 'B') continue;
+                    const bombs = Game.getNeighbors(i).filter(n => Game.state.grid[n] === 'B').length;
+                    Game.state.grid[i] = bombs;
+                }
+            },
+
+            getNeighbors: (i) => {
+                const w = 10; const l = i%w===0; const r = i%w===w-1;
+                const c = [!l?i-1:-1, !r?i+1:-1, i-w, i+w, !l?i-w-1:-1, !r?i-w+1:-1, !l?i+w-1:-1, !r?i+w+1:-1];
+                return c.filter(x => x >= 0 && x < 100);
+            },
+
+            checkWin: () => { if (Game.state.safeRevealed === 100 - Game.cfg.bombs) Game.gameOver(true); },
+
+            gameOver: (isWin, idx) => {
+                Game.state.isOver = true; clearInterval(Game.state.timerId);
+                Game.state.grid.forEach((v, i) => { if (v === 'B' && !Game.dom.cells[i].classList.contains('flagged')) { Game.dom.cells[i].classList.add('bomb', 'revealed'); Game.dom.cells[i].innerText = '💣'; }});
+                const msg = document.getElementById('result-msg');
+                if (isWin) { msg.innerText = "CHIẾN THẮNG!"; msg.style.color = "#4ade80"; App.recordWin(); if(navigator.vibrate) navigator.vibrate([100,50,100]); }
+                else { msg.innerText = "BẠN ĐÃ THUA"; msg.style.color = "#ef4444"; if(idx!==undefined) Game.dom.cells[idx].style.background='#b91c1c'; if(navigator.vibrate) navigator.vibrate(400); }
+                setTimeout(() => document.getElementById('result-overlay').classList.add('show'), 800);
+            }
+        };
     </script>
 </body>
 </html>
