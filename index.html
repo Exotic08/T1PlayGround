@@ -7,7 +7,7 @@
     <meta http-equiv="Expires" content="0" />
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minesweeper Ultimate Pro Max</title>
+    <title>Minesweeper Chord Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         /* --- 1. SETTINGS & VARIABLES --- */
@@ -114,13 +114,15 @@
         .cell:active { transform: scale(0.9); }
         .cell.revealed { background: rgba(0, 0, 0, 0.2); box-shadow: none; cursor: default; }
         .cell.bomb { background: var(--danger); animation: shake 0.4s; }
+        .cell.chord-error { animation: shake 0.3s; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-        .c1{color:#60a5fa} .c2{color:#4ade80} .c3{color:#f87171} .c4{color:#c084fc} .c5{color:#fbbf24}
+        .c1{color:#60a5fa} .c2{color:#4ade80} .c3{color:#f87171} .c4{color:#c084fc} .c5{color:#fbbf24} .c6{color:#2dd4bf} .c7{color:#000000} .c8{color:#808080}
 
         .controls { width: 95vw; max-width: 400px; display: flex; gap: 12px; margin-top: 20px; transition: opacity 0.3s; }
         .mode-btn { flex: 1; padding: 18px; border-radius: 16px; border: none; background: rgba(255,255,255,0.05); color: #94a3b8; font-weight: 800; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
         .mode-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); transform: translateY(-2px); }
         .mode-btn.active.flag { background: var(--danger); box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3); }
+        
         .pc-hint { display: none; margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 12px; color: #cbd5e1; font-size: 0.95rem; text-align: center; }
 
         /* --- 5. LEADERBOARD --- */
@@ -188,7 +190,7 @@
         <h1 style="font-size: 2.5rem;">MENU</h1>
         <button class="btn btn-primary" onclick="App.play()">🎮 CHƠI NGAY</button>
         <button class="btn" onclick="App.leaderboard('wins')">🏆 BẢNG XẾP HẠNG</button>
-        <div class="version-tag">Ver: 2.0 (No-Cache)</div>
+        <div class="version-tag">Ver: 2.1 (Chord)</div>
     </div>
 
     <div id="screen-game" class="screen">
@@ -215,7 +217,11 @@
             <button id="btn-dig" class="mode-btn active" onclick="Game.setMode('dig')">⛏️ ĐÀO</button>
             <button id="btn-flag" class="mode-btn flag" onclick="Game.setMode('flag')">🚩 CẮM CỜ</button>
         </div>
-        <div id="pc-hint" class="pc-hint"><div>🖱️ <b>Chuột Trái:</b> Đào</div><div style="margin-top:5px">🖱️ <b>Chuột Phải:</b> Cắm cờ</div></div>
+        <div id="pc-hint" class="pc-hint">
+            <div>🖱️ <b>Chuột Trái:</b> Đào</div>
+            <div>🖱️ <b>Chuột Phải:</b> Cắm cờ</div>
+            <div style="margin-top:5px; color: var(--accent)">💡 <b>Mẹo:</b> Click vào số để mở nhanh (Chord)</div>
+        </div>
     </div>
 
     <div id="screen-lb" class="screen">
@@ -235,7 +241,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getDatabase, ref, get, update, child } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-        // --- LỚP BẢO VỆ 2: XÓA SERVICE WORKER (ĐỂ ĐẢM BẢO KHÔNG BỊ CACHE APP) ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -269,7 +274,6 @@
                 document.getElementById('screen-' + screen).classList.add('active');
             },
 
-            // BƯỚC 1: XỬ LÝ TÊN & TƯƠNG THÍCH DỮ LIỆU CŨ
             submitName: async () => {
                 const btn = document.getElementById('btn-next');
                 const msg = document.getElementById('name-msg');
@@ -300,7 +304,6 @@
                 btn.disabled = false;
             },
 
-            // BƯỚC 2: XỬ LÝ SLOGAN & LƯU
             submitSlogan: async () => {
                 const btn = document.getElementById('btn-finish');
                 const desc = document.getElementById('inp-desc').value.trim();
@@ -323,7 +326,6 @@
 
             play: () => { App.nav('game'); Game.init(); },
 
-            // XỬ LÝ BẢNG XẾP HẠNG
             leaderboard: async (type) => {
                 State.currentTab = type; App.nav('lb');
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -337,6 +339,7 @@
                     if (snapshot.exists()) {
                         const users = snapshot.val();
                         let arr = [];
+                        
                         Object.keys(users).forEach(key => {
                             let u = users[key];
                             if (typeof u === 'number') u = { wins: u, losses: 0, bestTime: 999999, desc: "" };
@@ -430,7 +433,42 @@
                 document.getElementById('btn-flag').className = `mode-btn flag ${m==='flag'?'active':''}`;
             },
             updateHUD: () => { document.getElementById('g-flags').innerText = Game.cfg.bombs - Game.state.flags; },
-            click: (i) => { if(!Game.state.over) Game.state.isPC ? Game.dig(i) : (Game.state.mode==='flag'?Game.toggleFlag(i):Game.dig(i)); },
+            
+            click: (i) => {
+                if(Game.state.over) return;
+                const cell = Game.dom[i];
+                
+                // LOGIC CHORD: CLICK VÀO Ô ĐÃ MỞ CÓ SỐ
+                if(cell.classList.contains('revealed') && Game.grid[i] > 0) {
+                    Game.chord(i);
+                    return;
+                }
+
+                // LOGIC BÌNH THƯỜNG
+                Game.state.isPC ? Game.dig(i) : (Game.state.mode==='flag'?Game.toggleFlag(i):Game.dig(i)); 
+            },
+
+            // TÍNH NĂNG CHORD: MỞ NHANH
+            chord: (i) => {
+                const val = Game.grid[i];
+                const neighbors = Game.getNeighbors(i);
+                const flags = neighbors.filter(n => Game.dom[n].classList.contains('flagged')).length;
+
+                if (flags === val) {
+                    Game.vib(20);
+                    // Mở tất cả ô hàng xóm chưa mở và chưa cắm cờ
+                    neighbors.forEach(n => {
+                        if (!Game.dom[n].classList.contains('revealed') && !Game.dom[n].classList.contains('flagged')) {
+                            Game.dig(n);
+                        }
+                    });
+                } else {
+                    // Hiệu ứng rung lắc nếu chưa đủ cờ
+                    Game.dom[i].classList.add('chord-error');
+                    setTimeout(()=>Game.dom[i].classList.remove('chord-error'), 300);
+                }
+            },
+
             toggleFlag: (i) => {
                 const c = Game.dom[i]; if(c.classList.contains('revealed')) return;
                 if(c.classList.contains('flagged')) { c.classList.remove('flagged'); c.innerText=''; Game.state.flags--; }
@@ -475,7 +513,8 @@
                     App.recordLoss();
                 }
                 setTimeout(()=>document.getElementById('overlay').classList.add('show'), 1000);
-            }
+            },
+            vib: (p) => { if(navigator.vibrate) navigator.vibrate(p); }
         };
     </script>
 </body>
