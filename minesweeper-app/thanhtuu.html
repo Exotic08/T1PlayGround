@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thành Tựu</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <div id="screen-ach" class="screen" style="display: flex;">
+        <div class="game-header">
+            <a href="index.html" class="btn-icon" style="text-decoration: none; display:flex; justify-content:center; align-items:center;">⬅</a>
+            <h2 style="margin:0">THÀNH TỰU</h2>
+        </div>
+        <div id="ach-list" class="ach-list"></div>
+    </div>
+
+    <script>
+        const user = checkLogin();
+        const LIST_ACH = [
+            { id: 'win1', title: 'Tân Binh', desc: 'Thắng trận đầu tiên', icon: '🐣' },
+            { id: 'win10', title: 'Chuyên Gia', desc: 'Thắng 10 trận', icon: '💣' },
+            { id: 'speed60', title: 'Thần Tốc', desc: 'Thắng dưới 60s', icon: '⚡' },
+            { id: 'num5', title: 'Tử Thần', desc: 'Mở ô số 5', icon: '💀' }
+        ];
+
+        db.ref('users/' + user + '/achievements').once('value').then(snap => {
+            const unlockedAch = snap.val() || {};
+            const list = document.getElementById('ach-list');
+            list.innerHTML = '';
+            LIST_ACH.forEach(a => {
+                var ul = unlockedAch[a.id];
+                list.innerHTML += `
+                    <div class="ach-item ${ul?'unlocked':''}">
+                        <div class="ach-icon">${a.icon}</div>
+                        <div class="ach-content"><div class="ach-title">${a.title}</div><div class="ach-desc">${a.desc}</div></div>
+                        ${ul ? '<div>✅</div>' : ''}
+                    </div>`;
+            });
+        });
+    </script>
+</body>
+</html>
