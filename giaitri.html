@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>Minesweeper: Boss Battle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css"> 
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="config.js"></script>
+
+    <style>
+        /* CSS FIX CỨNG CHO BOSS MODE */
+        body { overflow: hidden; }
+        #board-container {
+            width: 100%; max-width: 380px; aspect-ratio: 1/1;
+            background: rgba(30, 41, 59, 0.8); padding: 8px; border-radius: 16px;
+            margin: 0 auto; border: 1px solid rgba(255,255,255,0.1);
+            display: flex; justify-content: center; align-items: center;
+        }
+        #grid {
+            display: grid !important; width: 100%; height: 100%; gap: 3px;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+        }
+        /* Các class khác giữ nguyên từ style.css hoặc định nghĩa lại nếu cần */
+        .boss-bar-container { width: 95%; max-width: 400px; margin-bottom: 10px; display: none; flex-direction: column; align-items: center; }
+        .boss-avatar { font-size: 3.5rem; margin-bottom: 5px; animation: float 2s infinite ease-in-out; }
+        .hp-bar-bg { width: 100%; height: 24px; background: #1e293b; border-radius: 12px; overflow: hidden; border: 2px solid #475569; position: relative; }
+        .hp-bar-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #ef4444, #f87171); transition: width 0.3s ease-out; }
+        .hp-text { position: absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size: 0.9rem; font-weight: 900; color: white; }
+        .damage-anim { animation: shake 0.4s; border-color: #ef4444 !important; }
+        
+        /* Quiz Overlay */
+        .quiz-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.98); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px); }
+        .quiz-question { font-size: 1.4rem; font-weight: 800; margin-bottom: 30px; color: var(--gold); line-height: 1.4; text-align: center;}
+        .quiz-btn { width: 100%; margin: 8px 0; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); text-align: center; padding: 16px; border-radius: 16px; color: white; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    </style>
+</head>
+<body>
+
+    <div id="screen-game" class="screen active">
+        <div class="game-header">
+            <a href="index.html" class="btn-icon" style="text-decoration: none; display:flex; justify-content:center; align-items:center;">⬅</a>
+            <div style="font-weight:900; font-size:1.2rem; color:var(--gold); text-transform:uppercase;" id="level-display">MÀN 1</div>
+            <div style="width: 40px;"></div>
+        </div>
+
+        <div id="boss-ui" class="boss-bar-container">
+            <div class="boss-avatar">👾</div>
+            <div class="hp-bar-bg"><div id="boss-hp-fill" class="hp-bar-fill"></div><div class="hp-text">BOSS: <span id="boss-hp-text">10</span></div></div>
+        </div>
+
+        <div id="info-bar" style="display: flex; gap: 15px; margin-bottom: 15px; width: 95%; max-width: 400px; justify-content: space-between;">
+            <div class="stat-box" style="color:var(--danger); width:100%; justify-content:center;">💣 <span id="mines-left">10</span></div>
+            <div class="stat-box" style="color:var(--text); width:100%; justify-content:center;">Màn <span id="lvl-num">1</span>/5</div>
+        </div>
+
+        <div id="board-container">
+            <div id="grid"></div>
+        </div>
+
+        <div class="controls">
+            <button id="btn-dig" class="mode-btn active" onclick="Game.setMode('dig')">⛏️ ĐÀO</button>
+            <button id="btn-flag" class="mode-btn flag" onclick="Game.setMode('flag')">🚩 CẮM CỜ</button>
+        </div>
+    </div>
+
+    <div id="quiz-overlay" class="quiz-overlay">
+        <div style="font-size:4rem; margin-bottom:10px">😈</div>
+        <div id="quiz-question" class="quiz-question">...</div>
+        <div id="quiz-answers" style="width:100%; max-width:400px"></div>
+    </div>
+
+    <div id="result-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.98); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center;">
+        <h1 id="res-title" style="font-size: 3rem; margin-bottom: 10px;">GAME OVER</h1>
+        <p id="res-desc" style="color: #cbd5e1; margin-bottom: 30px; text-align: center; font-size: 1.2rem;"></p>
+        <button id="btn-next-lvl" class="btn btn-primary" onclick="Game.nextLevel()" style="display:none; width: 80%;">MÀN TIẾP THEO ➡️</button>
+        <button id="btn-retry-lvl" class="btn btn-primary" onclick="Game.retryLevel()" style="width: 80%;">🔄 THỬ LẠI MÀN NÀY</button>
+        <a href="index.html" class="btn" style="width: 80%;">VỀ MENU CHÍNH</a>
+    </div>
+
+    <script>
+        const MINES_PER_LEVEL = [10, 12, 14, 16, 20];
+        const BOSS_MAX_HP = 10;
+        const BOSS_QUESTIONS = [
+            { q: "Game này tên gì?", a: ["Dò Mìn", "Đào Vàng", "Bắn Gà", "Rắn Săn Mồi"], c: 0 },
+            { q: "Ai đẹp trai nhất?", a: ["Admin", "Người chơi", "Boss", "Cả 3"], c: 2 },
+            { q: "1 + 1 = ?", a: ["2", "3", "11", "Boss"], c: 0 },
+            { q: "Cho Boss sống nhé?", a: ["Không", "Có", "Mơ đi", "Chắc chắn không"], c: 1 }
+        ];
+
+        window.Game = {
+            level: 1, mines: 10, grid: [], dom: [], isOver: false, mode: 'dig',
+            isBossLevel: false, bossMaxHP: BOSS_MAX_HP, bossHP: BOSS_MAX_HP, quizIndex: 0,
+            
+            init: (lvl) => {
+                Game.level = lvl; Game.isOver = false; Game.flags = 0;
+                
+                if (lvl < 5) {
+                    Game.mines = MINES_PER_LEVEL[lvl - 1]; Game.isBossLevel = false;
+                    document.getElementById('boss-ui').style.display = 'none';
+                    document.getElementById('info-bar').style.display = 'flex';
+                    document.getElementById('level-display').innerText = `MÀN ${lvl}`;
+                } else {
+                    Game.mines = 20; Game.isBossLevel = true; Game.bossHP = BOSS_MAX_HP;
+                    document.getElementById('boss-ui').style.display = 'flex';
+                    document.getElementById('info-bar').style.display = 'none';
+                    document.getElementById('level-display').innerText = `BOSS`;
+                    Game.updateBossBar();
+                }
+
+                const g = document.getElementById('grid'); 
+                if(!g) return;
+                g.innerHTML = '';
+                document.getElementById('result-overlay').style.display = 'none';
+                document.getElementById('quiz-overlay').style.display = 'none';
+                document.getElementById('board-container').style.opacity = '1';
+                document.getElementById('board-container').style.pointerEvents = 'auto';
+
+                if(!Game.isBossLevel) document.getElementById('mines-left').innerText = Game.mines;
+                document.getElementById('lvl-num').innerText = lvl;
+
+                Game.grid = Array(100).fill(0); Game.dom = [];
+                let c = 0; while(c < Game.mines) { let r = Math.floor(Math.random() * 100); if(Game.grid[r] !== 'B') { Game.grid[r] = 'B'; c++; } }
+                for(let i=0; i<100; i++) {
+                    if(Game.grid[i] !== 'B') {
+                        let total = 0; const w=10, l=i%w===0, r=i%w===w-1;
+                        const neighbors = [!l?i-1:-1, !r?i+1:-1, i-w, i+w, !l?i-w-1:-1, !r?i-w+1:-1, !l?i+w-1:-1, !r?i+w+1:-1];
+                        neighbors.forEach(n => { if(n>=0 && n<100 && Game.grid[n]==='B') total++; });
+                        Game.grid[i] = total;
+                    }
+                }
+                for(let i=0; i<100; i++){
+                    const cell = document.createElement('div'); cell.className = 'cell';
+                    cell.onclick = () => Game.click(i);
+                    cell.oncontextmenu = (e) => { e.preventDefault(); Game.toggleFlag(i); };
+                    g.appendChild(cell); Game.dom.push(cell);
+                }
+            },
+            
+            click: (i) => { if(!Game.isOver) Game.mode === 'flag' ? Game.toggleFlag(i) : Game.dig(i); },
+
+            dig: (i) => {
+                const c = Game.dom[i];
+                if(c.classList.contains('flagged') || c.classList.contains('revealed')) return;
+                if(Game.grid[i] === 'B') { Game.end(false, i, "Dẫm phải mìn!"); } 
+                else {
+                    Game.reveal(i);
+                    if(!Game.isBossLevel) {
+                        if(Game.dom.filter(c => c.classList.contains('revealed')).length === 100 - Game.mines) Game.end(true);
+                    }
+                }
+            },
+
+            reveal: (i) => {
+                const c = Game.dom[i]; 
+                if(c.classList.contains('revealed') || c.classList.contains('flagged')) return;
+                c.classList.add('revealed'); c.classList.remove('flagged');
+                if(Game.grid[i] > 0) { c.innerText = Game.grid[i]; c.classList.add('c'+Game.grid[i]); } 
+                else {
+                    const w=10, l=i%w===0, r=i%w===w-1;
+                    const neighbors = [!l?i-1:-1, !r?i+1:-1, i-w, i+w, !l?i-w-1:-1, !r?i-w+1:-1, !l?i+w-1:-1, !r?i+w+1:-1];
+                    neighbors.forEach(n => { if(n>=0 && n<100) Game.reveal(n); });
+                }
+            },
+
+            toggleFlag: (i) => {
+                const c = Game.dom[i];
+                if(c.classList.contains('revealed')) return;
+                if(c.classList.contains('flagged')) { c.classList.remove('flagged'); c.innerText = ''; } 
+                else { c.classList.add('flagged'); c.innerText = '🚩'; if(Game.isBossLevel && Game.grid[i] === 'B') Game.damageBoss(); }
+            },
+
+            damageBoss: () => {
+                Game.bossHP--; Game.updateBossBar();
+                const board = document.getElementById('board-container');
+                board.classList.add('damage-anim'); setTimeout(() => board.classList.remove('damage-anim'), 300);
+                if(Game.bossHP <= 0) { if(window.App && window.App.unlockAch) window.App.unlockAch('boss_slayer'); Game.end(true, null, "BOSS ĐÃ BỊ TIÊU DIỆT!"); return; }
+                if([8, 6, 4, 2].includes(Game.bossHP) && Game.quizIndex < BOSS_QUESTIONS.length) setTimeout(() => Game.triggerQuiz(), 600); 
+            },
+
+            updateBossBar: () => { document.getElementById('boss-hp-fill').style.width = (Game.bossHP / BOSS_MAX_HP) * 100 + '%'; document.getElementById('boss-hp-text').innerText = Game.bossHP; },
+
+            triggerQuiz: () => {
+                document.getElementById('board-container').style.opacity = '0.3'; document.getElementById('board-container').style.pointerEvents = 'none'; 
+                const q = BOSS_QUESTIONS[Game.quizIndex]; document.getElementById('quiz-question').innerText = q.q;
+                const ac = document.getElementById('quiz-answers'); ac.innerHTML = '';
+                q.a.forEach((ans, idx) => { const b = document.createElement('button'); b.className = 'quiz-btn'; b.innerText = ans.t; b.onclick = () => Game.answerQuiz(idx === q.c); ac.appendChild(b); });
+                document.getElementById('quiz-overlay').style.display = 'flex'; Game.quizIndex++; 
+            },
+
+            answerQuiz: (isCorrect) => {
+                document.getElementById('quiz-overlay').style.display = 'none';
+                if(isCorrect) { document.getElementById('board-container').style.opacity = '1'; document.getElementById('board-container').style.pointerEvents = 'auto'; } 
+                else { Game.end(false, null, "Trả lời sai! Boss đã tiễn bạn về làng."); }
+            },
+
+            end: (win, i, customMsg) => {
+                Game.isOver = true;
+                const t = document.getElementById('res-title'); const d = document.getElementById('res-desc');
+                const n = document.getElementById('btn-next-lvl'); const r = document.getElementById('btn-retry-lvl');
+                if(!win) {
+                    Game.grid.forEach((v,x)=>{ if(v==='B') {Game.dom[x].classList.add('revealed','bomb'); Game.dom[x].innerText='💣';}});
+                    if(i !== undefined && i !== null) Game.dom[i].style.background = "#ef4444";
+                }
+                if(win) {
+                    t.innerText = "CHIẾN THẮNG!"; t.style.color = "#4ade80";
+                    d.innerText = (Game.level < 5) ? "Lên tầng tiếp theo!" : (customMsg || "BẠN ĐÃ PHÁ ĐẢO!");
+                    n.style.display = (Game.level < 5) ? 'block' : 'none'; r.style.display = 'none';
+                } else {
+                    t.innerText = "THẤT BẠI!"; t.style.color = "#ef4444";
+                    d.innerText = customMsg || "Bạn đã dẫm phải mìn!";
+                    n.style.display = 'none'; r.style.display = 'block'; 
+                }
+                document.getElementById('result-overlay').style.display = 'flex';
+            },
+
+            nextLevel: () => { Game.init(Game.level + 1); },
+            retryLevel: () => { Game.init(Game.level); },
+            setMode: (m) => { Game.mode = m; document.getElementById('btn-dig').className = `mode-btn ${m==='dig'?'active':''}`; document.getElementById('btn-flag').className = `mode-btn flag ${m==='flag'?'active':''}`; }
+        };
+
+        // Đảm bảo init chạy sau khi DOM load
+        setTimeout(() => Game.init(1), 100);
+    </script>
+</body>
+</html>

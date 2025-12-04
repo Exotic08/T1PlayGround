@@ -1,0 +1,143 @@
+/* --- 1. CORE VISUALS --- */
+:root {
+    --bg-dark: #0f172a;
+    --bg-gradient: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
+    --glass: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --primary: #3b82f6; --accent: #10b981; --danger: #ef4444; --gold: #fbbf24;
+    --text: #f8fafc; --text-muted: #94a3b8;
+    --font: 'Nunito', sans-serif;
+}
+* { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; font-family: var(--font); }
+body { margin: 0; height: 100vh; background: var(--bg-dark); background-image: var(--bg-gradient); color: var(--text); overflow: hidden; display: flex; flex-direction: column; }
+
+/* --- 2. SCREENS & LAYOUT --- */
+.screen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: none; /* Mặc định ẩn */
+    flex-direction: column; align-items: center; justify-content: flex-start;
+    padding-top: 80px; z-index: 1;
+    overflow-y: auto; padding-bottom: 20px;
+}
+.screen.active { display: flex; z-index: 10; animation: fadeIn 0.3s ease-out; }
+
+/* ERROR SCREEN */
+#error-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: #000; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; color: red; text-align: center; padding: 20px;}
+
+/* --- 3. UI COMPONENTS --- */
+h1 { font-size: 2rem; margin-bottom: 1.5rem; text-align: center; background: linear-gradient(to right, #60a5fa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; font-weight: 900; }
+.card { background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(20px); border-radius: 24px; padding: 25px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.4); margin-top: 20px;}
+
+.btn { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.1); padding: 14px 20px; margin: 8px; border-radius: 14px; font-size: 1rem; font-weight: 800; cursor: pointer; width: 85%; max-width: 320px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
+.btn:active { transform: scale(0.96); }
+.btn-primary { background: var(--primary); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.5); border: none; }
+.btn-danger { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: var(--danger); }
+.btn-gold { background: rgba(251, 191, 36, 0.2); border-color: var(--gold); color: var(--gold); }
+.btn-pvp { background: linear-gradient(45deg, #ec4899, #8b5cf6); border: none; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.5); animation: pulse 2s infinite; flex-direction: column; gap: 2px;}
+.btn-watch { background: #8b5cf6; border: none; box-shadow: 0 4px 0 #6d28d9; width: 100%; margin-top: 10px; }
+.pvp-stats { font-size: 0.8rem; font-weight: normal; opacity: 0.9; }
+
+input { width: 100%; padding: 16px; border-radius: 14px; background: rgba(0, 0, 0, 0.3); border: 2px solid var(--glass-border); color: white; font-size: 1.1rem; text-align: center; font-weight: 700; outline: none; margin-bottom: 20px; }
+input:focus { border-color: var(--primary); }
+
+/* --- 4. GAME BOARD (QUAN TRỌNG: FIX HIỂN THỊ) --- */
+.game-header { width: 95%; max-width: 400px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.btn-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.1); border: none; color: white; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.stat-box { background: rgba(0,0,0,0.3); padding: 8px 16px; border-radius: 12px; font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; border: 1px solid var(--glass-border); min-width: 80px; justify-content: center; }
+
+/* Container chứa bàn cờ: Luôn vuông, căn giữa */
+.board-container {
+    width: 95vw; max-width: 400px;
+    aspect-ratio: 1 / 1;
+    background: rgba(30, 41, 59, 0.8);
+    padding: 8px; border-radius: 16px;
+    margin: 0 auto;
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    backdrop-filter: blur(10px);
+}
+
+/* Lưới: Luôn hiển thị grid */
+.grid {
+    display: grid;
+    width: 100%; height: 100%;
+    gap: 3px;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+}
+
+/* Ô cờ: Luôn lấp đầy lưới */
+.cell {
+    width: 100%; height: 100%;
+    background: #334155; border-radius: 4px; cursor: pointer;
+    display: flex; justify-content: center; align-items: center;
+    font-weight: 900; font-size: clamp(14px, 5vw, 22px); color: white;
+    box-shadow: 0 3px 0 #1e293b; transition: transform 0.1s;
+    user-select: none;
+}
+.cell:active { transform: translateY(2px); box-shadow: none; }
+.cell.revealed { background: #1e293b; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); transform: translateY(2px); border: 1px solid rgba(255,255,255,0.05); cursor: default; }
+.cell.flagged { color: #ef4444; text-shadow: 0 0 5px red; }
+.cell.bomb { background: #ef4444 !important; box-shadow: none; animation: shake 0.4s; z-index: 2; }
+.cell.chord-error { animation: shake 0.3s; }
+
+/* Màu số */
+.c1{color:#60a5fa} .c2{color:#4ade80} .c3{color:#f87171} .c4{color:#c084fc} .c5{color:#fbbf24}
+
+/* --- 5. OVERLAY --- */
+#game-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.98); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; border-radius: 16px; }
+#game-overlay.show { display: flex !important; animation: fadeIn 0.3s; }
+.result-title { font-size: 3rem; font-weight: 900; margin-bottom: 10px; }
+.result-desc { color: #cbd5e1; margin-bottom: 20px; text-align: center; padding: 0 20px; font-size: 1.2rem;}
+
+/* --- 6. CONTROLS --- */
+.controls { display: flex; gap: 10px; width: 95%; max-width: 400px; margin-top: 20px; }
+.mode-btn { flex: 1; padding: 18px; border-radius: 14px; background: rgba(255,255,255,0.05); color: var(--text-muted); font-weight: 800; border: none; display: flex; justify-content: center; align-items: center; gap: 8px; }
+.mode-btn.active { background: var(--primary); color: white; box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3); transform: translateY(-2px); }
+.mode-btn.active.flag { background: var(--danger); box-shadow: 0 5px 15px rgba(239,68,68,0.3); }
+
+/* --- 7. OTHERS --- */
+.pc-switch { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 20px; cursor: pointer; border: 1px solid var(--glass-border); }
+.pc-dot { width: 10px; height: 10px; border-radius: 50%; background: #64748b; transition: 0.3s; }
+.pc-switch.on .pc-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.pc-text { font-size: 0.8rem; font-weight: 700; color: #94a3b8; } .pc-switch.on .pc-text { color: white; }
+#user-badge { position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(0,0,0,0.6); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 30px; font-size: 0.9rem; font-weight: 700; display: none; align-items: center; gap: 8px; cursor: pointer; }
+
+/* LEADERBOARD & ACH */
+.lb-container { width: 95%; max-width: 420px; height: 60vh; display: flex; flex-direction: column; position: relative; }
+.lb-header-row { display: grid; grid-template-columns: 40px 1fr 80px; padding: 10px 15px; color: #94a3b8; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
+.lb-tabs { display: flex; gap: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 12px; }
+.tab-btn { flex: 1; padding: 10px; background: transparent; color: var(--text-muted); border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s;}
+.tab-btn.active { background: var(--primary); color: white; }
+.lb-list, .ach-list { flex: 1; overflow-y: auto; padding: 0 5px; margin: 0; list-style: none; padding-bottom: 70px; }
+.lb-item { display: grid; grid-template-columns: 40px 1fr 100px; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); margin-bottom: 8px; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+.lb-rank { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); font-weight: 800; font-size: 0.9rem; }
+.lb-top1 .lb-rank { background: var(--gold); color: black; box-shadow: 0 0 10px var(--gold); }
+.lb-top2 .lb-rank { background: #e2e8f0; color: black; }
+.lb-top3 .lb-rank { background: #d97706; color: white; }
+.lb-info { display: flex; flex-direction: column; overflow: hidden; }
+.lb-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.lb-desc { font-size: 0.75rem; color: #94a3b8; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-val { text-align: right; font-weight: 900; color: var(--accent); font-size: 1rem; }
+.lb-sub { font-size: 0.7rem; color: var(--text-muted); }
+.lb-user-sticky { position: absolute; bottom: 0; left: 0; width: 100%; background: #1e293b; border-top: 1px solid var(--primary); padding: 15px; border-radius: 16px 16px 0 0; display: none; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); z-index: 5; grid-template-columns: 40px 1fr 100px; align-items: center; gap: 10px; }
+
+/* ACH */
+.ach-item { display: grid; grid-template-columns: 50px 1fr 30px; align-items: center; gap: 15px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 16px; margin-bottom: 12px; opacity: 0.5; filter: grayscale(1); transition: 0.3s; }
+.ach-item.unlocked { opacity: 1; filter: grayscale(0); border-color: var(--accent); background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); }
+.ach-icon { font-size: 2rem; display: flex; justify-content: center; } .ach-content { text-align: left; }
+.ach-title { font-weight: 800; color: var(--gold); font-size: 1rem; margin-bottom: 2px; }
+.ach-stars { font-size: 0.8rem; color: var(--gold); margin-bottom: 2px; }
+.ach-desc { font-size: 0.8rem; color: #94a3b8; line-height: 1.2; }
+.ach-status { font-size: 1.2rem; }
+
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); } }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+.spectator-mode { border: 2px solid var(--gold); box-shadow: 0 0 15px var(--gold); }
+#spec-msg { position: absolute; top: 70px; background: var(--gold); color: black; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; z-index: 90; display: none; font-weight: bold;}
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 50px; z-index: 200; display: none; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }

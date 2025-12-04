@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>Thành Tựu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+
+    <div id="screen-ach" class="screen active">
+        <div class="game-header">
+            <a href="index.html" class="btn-icon" style="text-decoration:none;display:flex;justify-content:center;align-items:center;">⬅</a>
+            <h2 style="margin:0">THÀNH TỰU</h2>
+            <div style="width: 44px;"></div>
+        </div>
+
+        <div id="ach-list" class="ach-list">
+            <div class="loader" style="margin: 50px auto;"></div>
+            <p style="text-align:center; color:#94a3b8">Đang đồng bộ...</p>
+        </div>
+    </div>
+
+    <script>
+        const user = checkLogin();
+        
+        // Lấy dữ liệu người dùng
+        db.ref('users/' + user + '/achievements').once('value').then(snap => {
+            const userAch = snap.val() || {}; 
+            const listContainer = document.getElementById('ach-list');
+            listContainer.innerHTML = ''; 
+
+            // Kiểm tra config
+            if (!window.LIST_ACH || window.LIST_ACH.length === 0) {
+                listContainer.innerHTML = '<p style="text-align:center; color:#ef4444">Lỗi: Không tìm thấy danh sách thành tựu.</p>';
+                return;
+            }
+
+            // Đếm số lượng đã đạt
+            let count = 0;
+            window.LIST_ACH.forEach(ach => { if(userAch[ach.id]) count++; });
+            
+            // Hiển thị thanh tiến độ tổng quan
+            const percent = Math.round((count / window.LIST_ACH.length) * 100);
+            listContainer.innerHTML += `
+                <div style="padding: 0 10px 20px 10px; text-align:center;">
+                    <div style="font-size:1.5rem; font-weight:900; color:var(--gold); margin-bottom:5px;">${percent}% HOÀN THÀNH</div>
+                    <div style="width:100%; height:10px; background:#334155; border-radius:5px; overflow:hidden;">
+                        <div style="width:${percent}%; height:100%; background:var(--accent); transition:width 0.5s;"></div>
+                    </div>
+                    <p style="color:#94a3b8; font-size:0.9rem; margin-top:5px;">Đã mở khóa: ${count} / ${window.LIST_ACH.length}</p>
+                </div>
+            `;
+
+            // Render từng thẻ thành tựu
+            window.LIST_ACH.forEach(ach => {
+                const isUnlocked = userAch[ach.id] === true;
+                const starStr = '⭐'.repeat(ach.stars);
+                
+                listContainer.innerHTML += `
+                    <div class="ach-item ${isUnlocked ? 'unlocked' : ''}">
+                        <div class="ach-icon">${ach.icon}</div>
+                        <div class="ach-content">
+                            <div class="ach-title">${ach.title}</div>
+                            <div style="color:#f59e0b; font-size:0.8rem; margin-bottom:4px; letter-spacing:2px;">${starStr}</div>
+                            <div class="ach-desc">${ach.desc}</div>
+                        </div>
+                        <div class="ach-status">
+                            ${isUnlocked ? '✅' : '🔒'}
+                        </div>
+                    </div>
+                `;
+            });
+        });
+    </script>
+</body>
+</html>

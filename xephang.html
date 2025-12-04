@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>Bảng Xếp Hạng</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <div id="screen-lb" class="screen active">
+        <div class="game-header">
+            <a href="index.html" class="btn-icon" style="text-decoration:none;display:flex;justify-content:center;align-items:center;">⬅</a>
+            <h2 style="margin:0">XẾP HẠNG</h2>
+            <div style="width:40px"></div>
+        </div>
+
+        <div class="lb-container">
+            <div class="lb-tabs">
+                <button id="tab-wins" class="tab-btn active" onclick="loadLeaderboard('wins')">THẮNG</button>
+                <button id="tab-time" class="tab-btn" onclick="loadLeaderboard('time')">TỐC ĐỘ</button>
+                <button id="tab-rate" class="tab-btn" onclick="loadLeaderboard('rate')">TỈ LỆ</button>
+            </div>
+
+            <div class="lb-header-row">
+                <div>#</div>
+                <div>Người chơi</div>
+                <div style="text-align:right">Thành tích</div>
+            </div>
+
+            <ul id="lb-list" class="lb-list">
+                <div class="loader" style="margin: 50px auto;"></div>
+            </ul>
+            
+            <div id="lb-user-sticky" class="lb-user-sticky">
+                <div class="lb-rank" id="sticky-rank" style="background:var(--primary)">?</div>
+                <div class="lb-info">
+                    <div class="lb-name" id="sticky-name">Bạn</div>
+                    <div class="lb-desc">Đang tải hạng...</div>
+                </div>
+                <div class="lb-val" id="sticky-val">...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const user = checkLogin();
+        
+        function loadLeaderboard(type) {
+            // Update UI Tab
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-'+type).classList.add('active');
+            
+            var list = document.getElementById('lb-list');
+            var sticky = document.getElementById('lb-user-sticky');
+            
+            // Hiện loading
+            list.innerHTML = '<div class="loader" style="margin: 50px auto;"></div>';
+            sticky.style.display = 'none';
+
+            db.ref('users').once('value').then(snap => {
+                if(snap.exists()) {
+                    var arr = [];
+                    snap.forEach(c => {
+                        var u = c.val();
+                        // Chuẩn hóa dữ liệu tránh lỗi
+                        if(typeof u === 'number') u = {wins:u, losses:0, bestTime:999999};
+                        if(typeof u.losses === 'undefined') u.losses = 0;
+                        
+                        // Lọc: Chỉ hiện người đã chơi ít nhất 1 trận
+                        if((u.wins || 0) + (u.losses || 0) > 0) {
+                            arr.push({name:c.key, ...u});
+                        }
+                    });
+
+                    // Logic Sắp xếp
+                    if(type === 'wins') {
+                        arr.sort((a,b) => (b.wins||0) - (a.wins||0));
+                    } else if(type === 'time') {
+                        arr.sort((a,b) => (a.bestTime||999999) - (b.bestTime||999999));
+                    } else if(type === 'rate') {
+                        arr.sort((a,b) => { 
+                            var rA = a.wins / ((a.wins+a.losses) || 1); 
+                            var rB = b.wins / ((b.wins+b.losses) || 1); 
+                            return rB - rA; 
+                        });
+                    }
+
+                    // Render Danh sách
+                    list.innerHTML = '';
+                    var myRank = -1; 
+                    var myData = null;
+
+                    for(var i=0; i<arr.length; i++) {
+                        var u = arr[i];
+                        
+                        // Tìm hạng của mình
+                        if(u.name === user) { myRank = i + 1; myData = u; }
+                        
+                        // Chỉ render Top 10 ra màn hình chính
+                        if (i < 10) {
+                            var total = (u.wins||0) + (u.losses||0);
+                            var rate = total > 0 ? ((u.wins / total)*100).toFixed(0) : 0;
+                            
+                            // Định dạng hiển thị theo Tab
+                            var val = '0';
+                            if (type === 'wins') val = u.wins;
+                            else if (type === 'time') val = (u.bestTime < 999999) ? u.bestTime + 's' : '--';
+                            else val = rate + '%';
+
+                            var sub = (type === 'rate') ? `${u.wins}W/${u.losses}L` : ((type === 'wins') ? 'Wins' : 'Kỷ lục');
+                            
+                            // Class riêng cho Top 1,2,3
+                            var rankClass = i===0 ? 'lb-top1' : (i===1 ? 'lb-top2' : (i===2 ? 'lb-top3' : ''));
+                            var isMeStyle = (u.name === user) ? 'border-color:var(--primary); background:rgba(59,130,246,0.15);' : '';
+
+                            list.innerHTML += `
+                                <li class="lb-item ${rankClass}" style="${isMeStyle}">
+                                    <div class="lb-rank">${i+1}</div>
+                                    <div class="lb-info">
+                                        <div class="lb-name">${u.name}</div>
+                                        <div class="lb-desc">${u.desc || "Không có mô tả"}</div>
+                                    </div>
+                                    <div class="lb-stats">
+                                        <div class="lb-val">${val}</div>
+                                        <div class="lb-sub">${sub}</div>
+                                    </div>
+                                </li>`;
+                        }
+                    }
+
+                    // Nếu mình nằm ngoài Top 10 -> Hiện thanh dính ở dưới
+                    if(myRank > 10 && myData) {
+                        var total = myData.wins + myData.losses;
+                        var rate = total > 0 ? ((myData.wins / total)*100).toFixed(0) : 0;
+                        var val = type === 'wins' ? myData.wins : (type === 'time' ? (myData.bestTime < 999999 ? myData.bestTime+'s' : '--') : rate+'%');
+                        var sub = type === 'rate' ? `${myData.wins}W/${myData.losses}L` : ((type === 'wins') ? 'Wins' : 'Kỷ lục');
+
+                        document.getElementById('sticky-rank').innerText = myRank;
+                        document.getElementById('sticky-name').innerText = "Bạn (" + myData.name + ")";
+                        document.getElementById('sticky-val').innerText = val;
+                        // document.getElementById('sticky-sub').innerText = sub; // Nếu muốn hiện chi tiết
+                        sticky.style.display = 'grid';
+                    }
+                    
+                    if (arr.length === 0) {
+                        list.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8">Chưa có dữ liệu</div>';
+                    }
+                }
+            });
+        }
+        
+        // Mặc định load tab Thắng
+        loadLeaderboard('wins');
+    </script>
+</body>
+</html>

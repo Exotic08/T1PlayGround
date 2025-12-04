@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>Minesweeper Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+
+    <div id="user-badge" class="user-badge" onclick="App.editProfile()">
+        <span>👤 <span id="u-name">...</span></span> 
+        <span style="font-size: 0.8rem; opacity: 0.7;">✏️</span>
+    </div>
+
+    <div id="screen-login" class="screen active" style="justify-content: center;">
+        <div class="card">
+            <h1>ĐĂNG NHẬP</h1>
+            <div class="input-group">
+                <span class="input-label">Tên người chơi</span>
+                <input type="text" id="inp-name" placeholder="Ví dụ: ProGamer" maxlength="12">
+            </div>
+            <button class="btn btn-primary" id="btn-login" onclick="App.login()" style="width:100%">BẮT ĐẦU</button>
+            <button class="btn btn-danger" id="btn-cancel-login" onclick="App.showMenu()" style="width:100%; display:none;">HỦY BỎ</button>
+        </div>
+    </div>
+
+    <div id="screen-slogan" class="screen" style="justify-content: center;">
+        <div class="card">
+            <h1>HỒ SƠ</h1>
+            <h3 id="welcome-user" style="color:var(--primary); margin-bottom: 20px;"></h3>
+            <div class="input-group">
+                <span class="input-label">Mô tả / Slogan (Ngắn gọn)</span>
+                <input type="text" id="inp-desc" placeholder="Ví dụ: Bất bại!" maxlength="25">
+            </div>
+            <button class="btn btn-primary" onclick="App.saveSlogan()" style="width:100%">HOÀN TẤT</button>
+        </div>
+    </div>
+
+    <div id="screen-menu" class="screen" style="justify-content: center;">
+        <h1>MINESWEEPER</h1>
+        
+        <button class="btn btn-primary" onclick="window.location.href='choi.html'">
+            🎮 CHƠI ĐƠN
+        </button>
+
+        <button class="btn btn-pvp" onclick="window.location.href='choi.html?mode=pvp'">
+            <div style="font-size:1.1rem; font-weight:900">⚔️ ĐẤU PVP</div>
+            <div class="pvp-stats">Chờ: <span id="stat-wait">...</span></div>
+        </button>
+
+        <button class="btn" style="background: linear-gradient(135deg, #a855f7, #d946ef); border:none; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.5);" onclick="window.location.href='giaitri.html'">
+            🎪 CHẾ ĐỘ GIẢI TRÍ
+        </button>
+
+        <button class="btn" onclick="window.location.href='xephang.html'">
+            🏆 BẢNG XẾP HẠNG
+        </button>
+
+        <button class="btn btn-gold" onclick="window.location.href='thanhtuu.html'">
+            🎖️ THÀNH TỰU
+        </button>
+
+        <button class="btn btn-danger" onclick="App.logout()" style="margin-top: 20px;">
+            ĐĂNG XUẤT
+        </button>
+        
+        <div style="position:absolute; bottom:20px; color:#64748b; font-size:0.8rem">Ver: 24.0 (Full Menu)</div>
+    </div>
+
+    <script>
+        const LocalState = {
+            user: null,
+            data: {},
+            isEditing: false
+        };
+
+        window.App = {
+            init: () => {
+                // Kiểm tra đăng nhập từ LocalStorage
+                const savedUser = localStorage.getItem('ms_user');
+                if (savedUser) {
+                    LocalState.user = savedUser;
+                    App.finishLogin();
+                } else {
+                    document.getElementById('screen-login').classList.add('active');
+                }
+
+                // Lắng nghe số người online (cho nút PvP đẹp hơn)
+                try {
+                    db.ref('waiting').on('value', snap => {
+                        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+                        const el = document.getElementById('stat-wait');
+                        if(el) el.innerText = count;
+                    });
+                } catch(e) { console.log("Firebase wait error", e); }
+            },
+
+            login: () => {
+                const name = document.getElementById('inp-name').value.trim().replace(/[^a-zA-Z0-9]/g, "");
+                if (name.length < 2) return alert("Tên quá ngắn (tối thiểu 2 ký tự)!");
+                
+                document.getElementById('btn-login').innerText = "Đang tải...";
+                LocalState.user = name;
+
+                // Kiểm tra trên Firebase
+                db.ref('users/' + name).once('value').then(snap => {
+                    if (snap.exists()) {
+                        LocalState.data = snap.val();
+                        if (!LocalState.data.achievements) LocalState.data.achievements = {};
+                        
+                        if (LocalState.isEditing) {
+                            // Đang chế độ sửa -> Nhảy vào Slogan
+                            document.getElementById('inp-desc').value = LocalState.data.desc || "";
+                            document.getElementById('welcome-user').innerText = `Cập nhật hồ sơ: ${name}`;
+                            App.showScreen('slogan');
+                        } else {
+                            // Đăng nhập thường -> Vào Menu
+                            localStorage.setItem('ms_user', name);
+                            App.finishLogin();
+                        }
+                    } else {
+                        // Người mới -> Vào Slogan
+                        LocalState.data = { wins: 0, losses: 0, desc: "", achievements: {} };
+                        document.getElementById('welcome-user').innerText = `Xin chào ${name}!`;
+                        App.showScreen('slogan');
+                    }
+                }).catch(e => {
+                    alert("Lỗi kết nối: " + e.message);
+                    document.getElementById('btn-login').innerText = "TIẾP TỤC";
+                });
+            },
+
+            saveSlogan: () => {
+                const desc = document.getElementById('inp-desc').value.trim();
+                LocalState.data.desc = desc;
+                
+                db.ref('users/' + LocalState.user).update(LocalState.data).then(() => {
+                    localStorage.setItem('ms_user', LocalState.user);
+                    LocalState.isEditing = false;
+                    App.finishLogin();
+                });
+            },
+
+            finishLogin: () => {
+                document.getElementById('u-name').innerText = LocalState.user;
+                document.getElementById('user-badge').style.display = 'flex';
+                
+                // Reset UI Login
+                document.getElementById('btn-login').innerText = "TIẾP TỤC";
+                document.getElementById('btn-cancel-login').style.display = 'none';
+                
+                App.showMenu();
+            },
+
+            editProfile: () => {
+                LocalState.isEditing = true;
+                document.getElementById('inp-name').value = LocalState.user;
+                document.getElementById('btn-login').innerText = "CẬP NHẬT";
+                document.getElementById('btn-cancel-login').style.display = 'block';
+                App.showScreen('login');
+            },
+
+            logout: () => {
+                localStorage.removeItem('ms_user');
+                location.reload();
+            },
+
+            showMenu: () => {
+                LocalState.isEditing = false;
+                App.showScreen('menu');
+            },
+
+            showScreen: (id) => {
+                document.querySelectorAll('.screen').forEach(s => {
+                    s.classList.remove('active');
+                    s.style.display = 'none'; 
+                });
+                const target = document.getElementById('screen-' + id);
+                if(target) {
+                    target.classList.add('active');
+                    target.style.display = 'flex';
+                }
+            }
+        };
+
+        // Khởi chạy
+        window.onload = App.init;
+    </script>
+</body>
+</html>
