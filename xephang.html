@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Xếp Hạng</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <div id="screen-lb" class="screen" style="display: flex;">
+        <div class="game-header">
+            <a href="index.html" class="btn-icon" style="text-decoration: none; display:flex; justify-content:center; align-items:center;">⬅</a>
+            <h2 style="margin:0">XẾP HẠNG</h2>
+        </div>
+        <div class="lb-container">
+            <div class="lb-tabs">
+                <button id="tab-wins" class="tab-btn active" onclick="loadLeaderboard('wins')">THẮNG</button>
+                <button id="tab-time" class="tab-btn" onclick="loadLeaderboard('time')">TỐC ĐỘ</button>
+                <button id="tab-rate" class="tab-btn" onclick="loadLeaderboard('rate')">TỈ LỆ</button>
+            </div>
+            <div class="lb-header-row"><div>#</div><div>Người chơi</div><div style="text-align:right">Điểm</div></div>
+            <ul id="lb-list" class="lb-list"></ul>
+            <div id="lb-user-sticky" class="lb-user-sticky">
+                <div class="lb-rank" id="sticky-rank" style="background:var(--primary)">?</div>
+                <div class="lb-info"><div class="lb-name" id="sticky-name">Bạn</div><div class="lb-desc">Hạng của bạn</div></div>
+                <div class="lb-stats"><div class="lb-val" id="sticky-val">...</div><div class="lb-sub" id="sticky-sub">...</div></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const user = checkLogin();
+        
+        function loadLeaderboard(type) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-'+type).classList.add('active');
+            var list = document.getElementById('lb-list');
+            var sticky = document.getElementById('lb-user-sticky');
+            list.innerHTML = '<li style="padding:20px;text-align:center">Đang tải...</li>';
+            sticky.style.display = 'none';
+
+            db.ref('users').once('value').then(snap => {
+                if(snap.exists()) {
+                    var arr = [];
+                    snap.forEach(c => {
+                        var u = c.val();
+                        if(typeof u === 'number') u = {wins:u, losses:0, bestTime:999999};
+                        if((u.wins||0)+(u.losses||0) > 0) arr.push({name:c.key, ...u});
+                    });
+                    if(type==='wins') arr.sort((a,b)=> (b.wins||0)-(a.wins||0));
+                    else if(type==='time') arr.sort((a,b)=> a.bestTime - b.bestTime);
+                    else arr.sort((a,b) => { var rA = a.wins/(a.wins+a.losses)||0; var rB = b.wins/(b.wins+b.losses)||0; return rB - rA; });
+
+                    list.innerHTML = '';
+                    var myRank = -1; var myData = null;
+
+                    for(var i=0; i<arr.length; i++) {
+                        var u = arr[i];
+                        if(u.name === user) { myRank = i+1; myData = u; }
+                        if (i < 10) {
+                            var rate = u.wins+u.losses > 0 ? ((u.wins/(u.wins+u.losses))*100).toFixed(0) : 0;
+                            var val = type==='wins' ? u.wins : (type==='time' ? (u.bestTime<999999?u.bestTime+'s':'--') : rate+'%');
+                            var sub = type==='rate' ? u.wins+'W/'+u.losses+'L' : (type==='wins'?'Wins':'Rec');
+                            list.innerHTML += `
+                                <li class="lb-item ${i<3?'lb-top'+(i+1):''}" style="${u.name===user?'border-color:var(--primary);background:rgba(59,130,246,0.1)':''}">
+                                    <div class="lb-rank">${i+1}</div>
+                                    <div class="lb-info"><div class="lb-name">${u.name}</div><div class="lb-desc">${u.desc||""}</div></div>
+                                    <div class="lb-stats"><div class="lb-val">${val}</div><div class="lb-sub">${sub}</div></div>
+                                </li>`;
+                        }
+                    }
+                    if(myRank > 10 && myData) {
+                        var rate = myData.wins+myData.losses > 0 ? ((myData.wins/(myData.wins+myData.losses))*100).toFixed(0) : 0;
+                        var val = type==='wins' ? myData.wins : (type==='time' ? (myData.bestTime<999999?myData.bestTime+'s':'--') : rate+'%');
+                        var sub = type==='rate' ? myData.wins+'W/'+myData.losses+'L' : (type==='wins'?'Wins':'Rec');
+                        document.getElementById('sticky-rank').innerText = myRank;
+                        document.getElementById('sticky-val').innerText = val;
+                        document.getElementById('sticky-sub').innerText = sub;
+                        sticky.style.display = 'grid';
+                    }
+                }
+            });
+        }
+        loadLeaderboard('wins');
+    </script>
+</body>
+</html>
