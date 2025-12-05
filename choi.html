@@ -15,7 +15,6 @@
 
     <style>
         body { overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        
         #game-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15,23,42,0.98); z-index: 100;
@@ -23,7 +22,6 @@
             border-radius: 16px;
         }
         #game-overlay.show { display: flex !important; }
-        
         @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
     </style>
 </head>
@@ -184,12 +182,9 @@
                 
                 if(window.App.applySkin) window.App.applySkin();
 
-                // DÙNG SEEDED RANDOM TỪ CONFIG.JS
                 if(typeof window.SeededRandom !== 'undefined') {
                     Game.rng = new window.SeededRandom(seed);
-                    console.log("Using SeededRandom with seed:", seed);
                 } else {
-                    console.warn("SeededRandom not found! Sync may fail.");
                     Game.rng = { next: () => Math.random() };
                 }
 
@@ -230,9 +225,10 @@
                 
                 if(Game.firstClick) {
                     Game.firstClick = false; 
-                    // CHẾ ĐỘ SAFE MODE:
-                    // PvP = FALSE (Để đảm bảo bàn cờ 2 bên giống hệt nhau, không phụ thuộc vào cú click đầu tiên)
-                    // Single = TRUE (Bảo vệ người chơi không chết ngay cú đầu)
+                    
+                    // === FIX CHÍNH Ở ĐÂY ===
+                    // Nếu là PvP: safeMode = false. 
+                    // Hàm plant sẽ KHÔNG QUAN TÂM vị trí i là gì -> Tạo bàn cờ thuần túy theo Seed.
                     let safeMode = !State.isPvP; 
                     Game.plant(i, safeMode); 
 
@@ -279,12 +275,14 @@
                 }
             },
 
+            // === HÀM PLANT ĐÃ ĐƯỢC SỬA LOGIC ===
             plant: (s, safeMode) => {
-                let forbidden = []; // Mặc định không có vùng cấm (PvP)
+                let forbidden = []; // Mặc định không có vùng cấm
                 
+                // Nếu là Chơi đơn (safeMode = true) thì mới tránh vị trí click
+                // Nếu là PvP (safeMode = false) thì forbidden rỗng -> Bàn cờ giống hệt nhau
                 if (safeMode) {
                     forbidden = [s];
-                    // Thêm các ô xung quanh vào vùng cấm
                     forbidden = forbidden.concat(Game.getN(s));
                 }
 
@@ -298,6 +296,7 @@
                         Game.grid[r] = 'B'; c++; 
                     } 
                 }
+                // Tính số
                 for(let i=0; i<100; i++) if(Game.grid[i]!=='B') Game.grid[i] = Game.getN(i).filter(n=>Game.grid[n]==='B').length;
             },
 
@@ -353,7 +352,6 @@
                         const m = snap.val();
                         Object.keys(m).forEach(k => { 
                             var val = m[k];
-                            // Chỉ tái hiện lại hành động của đối thủ trên bàn cờ CỦA MÌNH (vì bàn cờ đã được đồng bộ giống hệt)
                             if(val === 3) { if(!Game.dom[k].classList.contains('revealed')) { Game.dom[k].classList.add('flagged'); } }
                             else if(val === 2) { Game.dom[k].classList.add('revealed', 'bomb'); Game.dom[k].innerText='💣'; Game.dom[k].style.background="#ef4444"; }
                             else if(val === 1 && !Game.dom[k].classList.contains('revealed')) { Game.dig(parseInt(k), true); }
