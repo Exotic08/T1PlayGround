@@ -82,7 +82,6 @@
         const isPvPMode = urlParams.get('mode') === 'pvp';
         
         let State = { matchId: null, opponent: null, waitingRef: null, isPvP: isPvPMode, matchStartTime: 0 };
-        // Lưu trữ các ref để dọn dẹp (Fix Memory Leak)
         let Listeners = { winner: null, dead: null, moves: null };
 
         window.onload = function() {
@@ -118,7 +117,6 @@
                     const myMatch = db.ref('users/' + user + '/match');
                     myMatch.onDisconnect().remove();
                     
-                    // Fix: Đảm bảo chỉ lắng nghe 1 lần
                     myMatch.off();
                     myMatch.on('value', snap => {
                         const mid = snap.val();
@@ -146,7 +144,6 @@
             
             Game.init(seed);
 
-            // FIX: Dọn dẹp listener cũ trước khi gán mới
             if(Listeners.winner) Listeners.winner.off();
             if(Listeners.dead) Listeners.dead.off();
 
@@ -165,12 +162,10 @@
                 var d = snap.val(); if(d && d[user] && d[opp]) db.ref('matches/'+mid).update({winner: "DRAW"});
             });
             
-            // Handle disconnect lose
             db.ref('matches/'+mid+'/dead/'+user).onDisconnect().set(true);
         };
 
         window.App.quitGame = () => { 
-            // Tắt hết listener khi thoát
             if(Listeners.winner) Listeners.winner.off();
             if(Listeners.dead) Listeners.dead.off();
             if(Listeners.moves) Listeners.moves.off();
@@ -189,8 +184,14 @@
                 
                 if(window.App.applySkin) window.App.applySkin();
 
-                if(typeof SeededRandom !== 'undefined') Game.rng = new SeededRandom(seed);
-                else Game.rng = { next: () => Math.random() };
+                // DÙNG SEEDED RANDOM TỪ CONFIG.JS
+                if(typeof window.SeededRandom !== 'undefined') {
+                    Game.rng = new window.SeededRandom(seed);
+                    console.log("Using SeededRandom with seed:", seed);
+                } else {
+                    console.warn("SeededRandom not found! Sync may fail.");
+                    Game.rng = { next: () => Math.random() };
+                }
 
                 const g = document.getElementById('grid');
                 if(!g) return;
@@ -229,12 +230,9 @@
                 
                 if(Game.firstClick) {
                     Game.firstClick = false; 
-                    // FIX LỖI DESYNC: Trong PvP, buộc phải dùng seed để rải bom giống hệt nhau
-                    // Không được phép dùng logic "tránh vị trí click đầu tiên" (wideOpen) 
-                    // vì vị trí click của 2 người chơi là khác nhau.
-                    // Nếu là PvP: forbidden = [] (Chấp nhận rủi ro đen đủi lượt đầu để đảm bảo công bằng)
-                    // Nếu là Chơi đơn: forbidden = [i] (Bảo hộ người chơi)
-                    
+                    // CHẾ ĐỘ SAFE MODE:
+                    // PvP = FALSE (Để đảm bảo bàn cờ 2 bên giống hệt nhau, không phụ thuộc vào cú click đầu tiên)
+                    // Single = TRUE (Bảo vệ người chơi không chết ngay cú đầu)
                     let safeMode = !State.isPvP; 
                     Game.plant(i, safeMode); 
 
@@ -281,20 +279,21 @@
                 }
             },
 
-            // FIX LOGIC PLANT: Nếu không phải SafeMode (PvP), forbidden là rỗng để đồng bộ
             plant: (s, safeMode) => {
-                let forbidden = []; // Mặc định không cấm ô nào (cho PvP)
+                let forbidden = []; // Mặc định không có vùng cấm (PvP)
                 
                 if (safeMode) {
                     forbidden = [s];
-                    // Logic mở rộng vùng an toàn cho chơi đơn
+                    // Thêm các ô xung quanh vào vùng cấm
                     forbidden = forbidden.concat(Game.getN(s));
                 }
 
                 let c = 0; 
                 while(c < Game.bombs) { 
+                    // Dùng RNG đồng bộ
                     let r = Math.floor(Game.rng.next() * 100);
-                    // Chỉ kiểm tra forbidden nếu nó có dữ liệu
+                    
+                    // Logic đặt mìn
                     if(!forbidden.includes(r) && Game.grid[r] !== 'B') { 
                         Game.grid[r] = 'B'; c++; 
                     } 
@@ -346,7 +345,6 @@
                 Game.revealed = 0;
                 if(State.matchStartTime) { Game.timer = setInterval(()=>{ Game.time = Math.floor((Date.now() - State.matchStartTime)/1000); document.getElementById('g-time').innerText = Game.time; }, 1000); }
 
-                // FIX: Lưu listener để dọn dẹp sau này
                 if(Listeners.moves) Listeners.moves.off();
                 Listeners.moves = db.ref('matches/'+State.matchId+'/moves/'+State.opponent);
                 
@@ -355,6 +353,7 @@
                         const m = snap.val();
                         Object.keys(m).forEach(k => { 
                             var val = m[k];
+                            // Chỉ tái hiện lại hành động của đối thủ trên bàn cờ CỦA MÌNH (vì bàn cờ đã được đồng bộ giống hệt)
                             if(val === 3) { if(!Game.dom[k].classList.contains('revealed')) { Game.dom[k].classList.add('flagged'); } }
                             else if(val === 2) { Game.dom[k].classList.add('revealed', 'bomb'); Game.dom[k].innerText='💣'; Game.dom[k].style.background="#ef4444"; }
                             else if(val === 1 && !Game.dom[k].classList.contains('revealed')) { Game.dig(parseInt(k), true); }
