@@ -12,7 +12,6 @@ const firebaseConfig = {
     measurementId: "G-XBJQF7Q242"
 };
 
-// Khởi tạo Firebase
 try {
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
@@ -22,7 +21,7 @@ try {
     console.error("Firebase Init Error:", e);
 }
 
-// 2. DANH SÁCH THÀNH TỰU (QUAN TRỌNG: PHẢI CÓ DÒNG NÀY)
+// 2. DANH SÁCH THÀNH TỰU
 window.LIST_ACH = [
     { id: 'win1', title: 'Tân Binh', desc: 'Thắng trận đầu tiên', stars: 1, icon: '🐣' },
     { id: 'win10', title: 'Chuyên Gia', desc: 'Thắng 10 trận', stars: 2, icon: '💣' },
@@ -31,7 +30,14 @@ window.LIST_ACH = [
     { id: 'boss_slayer', title: 'Dũng Sĩ Diệt Boss', desc: 'Đánh bại Boss (Giải trí)', stars: 3, icon: '👹' }
 ];
 
-// 3. LOGIC DÙNG CHUNG
+// 3. DANH SÁCH SKIN
+window.SKINS = [
+    { id: 'default', name: 'Hiện Đại (Mặc định)', desc: 'Giao diện tối chuẩn', color: '#1e293b' },
+    { id: 'classic', name: 'Windows 98', desc: 'Phong cách cổ điển', color: '#c0c0c0' },
+    { id: 'pink',    name: 'Giấc Mơ Hồng', desc: 'Dễ thương', color: '#fce7f3' }
+];
+
+// 4. LOGIC CHUNG
 window.checkLogin = function() {
     const user = localStorage.getItem('ms_user');
     if (user) return user;
@@ -43,7 +49,6 @@ window.checkLogin = function() {
 
 window.App = window.App || {};
 
-// Hàm mở khóa (Dùng chung)
 window.App.unlockAch = (id) => {
     const user = localStorage.getItem('ms_user');
     if(user) {
@@ -57,9 +62,29 @@ window.App.unlockAch = (id) => {
     }
 };
 
+// --- HÀM SKIN (QUAN TRỌNG) ---
+// Hàm này sẽ được gọi từ các file html chơi game
+window.App.applySkin = () => {
+    const skin = localStorage.getItem('ms_skin') || 'default';
+    const board = document.getElementById('board-container');
+    
+    // Chỉ áp dụng nếu tìm thấy bàn cờ (tức là đang ở trang chơi game)
+    if (board) {
+        // Reset class
+        board.classList.remove('skin-default', 'skin-classic', 'skin-pink');
+        
+        // Apply class mới
+        if (skin !== 'default') {
+            board.classList.add('skin-' + skin);
+        }
+        console.log("Đã áp dụng Skin:", skin);
+    }
+    return skin;
+};
+
 function showGlobalToast(msg) {
     let toast = document.getElementById('toast');
-    if (!toast) { // Tạo toast ảo nếu trang không có sẵn
+    if (!toast) { 
         toast = document.createElement('div');
         toast.id = 'toast';
         toast.style.cssText = "position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:50px; z-index:9999; font-weight:bold; display:none";

@@ -6,6 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <title>Chơi Game</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap" rel="stylesheet"> 
     <link rel="stylesheet" href="style.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -13,48 +14,7 @@
     <script src="config.js"></script>
 
     <style>
-        /* CSS FIX CỨNG */
         body { overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        
-        #board-container {
-            width: 95vw; max-width: 400px;
-            aspect-ratio: 1 / 1;
-            background: rgba(30, 41, 59, 0.8);
-            padding: 8px; border-radius: 16px;
-            margin: 0 auto; border: 1px solid rgba(255,255,255,0.15);
-            display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        
-        #grid {
-            display: grid !important;
-            width: 100%; height: 100%;
-            gap: 3px;
-            grid-template-columns: repeat(10, 1fr);
-            grid-template-rows: repeat(10, 1fr);
-        }
-
-        .cell {
-            width: 100%; height: 100%;
-            background: #334155; border-radius: 4px; cursor: pointer;
-            display: flex; justify-content: center; align-items: center;
-            font-weight: 900; font-size: clamp(14px, 5vw, 22px); color: white;
-            box-shadow: 0 3px 0 #1e293b; transition: transform 0.1s;
-            user-select: none; position: relative;
-        }
-        .cell:active { transform: translateY(2px); box-shadow: none; }
-        
-        .cell.revealed { 
-            background: #1e293b; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); 
-            transform: translateY(2px); border: 1px solid rgba(255,255,255,0.05); 
-            cursor: default; 
-        }
-        .cell.flagged { color: #ef4444 !important; text-shadow: 0 0 5px red; }
-        .cell.flagged::after { content: '🚩'; font-size: 0.8em; }
-        .cell.bomb { background: #ef4444 !important; color: white !important; box-shadow: none; animation: shake 0.4s; z-index: 2; }
-        .cell.bomb::after { content: '💣'; }
-        .cell.chord-error { animation: shake 0.2s; }
-        .c1{color:#60a5fa} .c2{color:#4ade80} .c3{color:#f87171} .c4{color:#c084fc} .c5{color:#fbbf24}
         
         #game-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -82,9 +42,9 @@
     <div id="screen-game" class="screen" style="display: none;">
         <div class="game-header">
             <a href="index.html" class="btn-icon" onclick="App.quitGame()">⬅</a>
-            <div id="pc-switch" class="pc-switch" onclick="Game.togglePC()">
-                <div class="pc-dot"></div>
-                <span class="pc-text">PC MODE</span>
+            <div id="pc-switch" class="pc-switch" style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 20px; cursor: pointer; border: 1px solid rgba(255,255,255,0.15);" onclick="Game.togglePC()">
+                <div class="pc-dot" style="width: 10px; height: 10px; border-radius: 50%; background: #64748b; transition: 0.3s;"></div>
+                <span class="pc-text" style="font-size: 0.8rem; font-weight: 700; color: #94a3b8;">PC MODE</span>
             </div>
         </div>
 
@@ -122,67 +82,101 @@
         const isPvPMode = urlParams.get('mode') === 'pvp';
         
         let State = { matchId: null, opponent: null, waitingRef: null, isPvP: isPvPMode, matchStartTime: 0 };
+        // Lưu trữ các ref để dọn dẹp (Fix Memory Leak)
+        let Listeners = { winner: null, dead: null, moves: null };
 
         window.onload = function() {
+            if(window.App && window.App.applySkin) window.App.applySkin();
             if (isPvPMode) { App.findMatch(); } else { App.startSingle(); }
         };
 
-        window.App = {
-            startSingle: () => {
-                document.getElementById('screen-game').style.display = 'flex';
-                setTimeout(() => Game.init(Math.floor(Math.random() * 100000)), 100);
-            },
-            findMatch: () => {
-                document.getElementById('screen-match').style.display = 'flex';
-                document.getElementById('match-log').innerText = "Đang tìm phòng...";
-                db.ref('waiting').once('value').then(snap => {
-                    if(snap.exists()) {
-                        const users = snap.val(); const oppKey = Object.keys(users)[0];
-                        if(oppKey === user) return;
-                        const oppName = users[oppKey]; db.ref('waiting/' + oppKey).remove();
-                        document.getElementById('match-log').innerText = `Tìm thấy: ${oppName}!`;
-                        const mid = 'm_' + Date.now(); const seed = Math.floor(Math.random()*100000); const start = Date.now() + 1000;
-                        db.ref('matches/' + mid).set({ p1: oppName, p2: user, seed: seed, startTime: start, winner: "" });
-                        db.ref('users/' + oppName + '/match').set(mid);
-                        App.enterPvP(mid, seed, oppName, start);
-                    } else {
-                        document.getElementById('match-log').innerText = "Đang đợi người khác...";
-                        State.waitingRef = db.ref('waiting/' + user); State.waitingRef.set(user);
-                        State.waitingRef.onDisconnect().remove();
-                        const myMatch = db.ref('users/' + user + '/match');
-                        myMatch.onDisconnect().remove();
-                        myMatch.on('value', snap => {
-                            const mid = snap.val();
-                            if(mid) {
-                                myMatch.remove(); State.waitingRef.remove();
-                                db.ref('matches/' + mid).once('value').then(ms => { var d = ms.val(); App.enterPvP(mid, d.seed, d.p2, d.startTime); });
-                            }
-                        });
-                    }
-                });
-            },
-            cancelMatch: () => { if(State.waitingRef) State.waitingRef.remove(); window.location.href = 'index.html'; },
-            enterPvP: (mid, seed, opp, start) => {
-                State.isPvP = true; State.matchId = mid; State.opponent = opp; State.matchStartTime = start;
-                document.getElementById('screen-match').style.display = 'none';
-                document.getElementById('screen-game').style.display = 'flex';
-                document.getElementById('pvp-info').style.display = 'block';
-                document.getElementById('opp-name').innerText = opp;
-                document.getElementById('btn-replay').style.display = 'none'; 
-                Game.init(seed);
-                db.ref('matches/' + mid + '/winner').on('value', snap => {
-                    var w = snap.val();
-                    if(w) {
-                        if(w === "DRAW") Game.showRes("DRAW");
-                        else if(w === user) Game.end(true);
-                        else if(!Game.isOver && !Game.isSpectating) Game.pvpLose();
-                    }
-                });
-                db.ref('matches/'+mid+'/dead').on('value', snap => {
-                    var d = snap.val(); if(d && d[user] && d[opp]) db.ref('matches/'+mid).update({winner: "DRAW"});
-                });
-            },
-            quitGame: () => { if(State.isPvP && !Game.isOver) db.ref('matches/' + State.matchId).update({winner: State.opponent}); window.location.href = 'index.html'; }
+        window.App = window.App || {};
+
+        window.App.startSingle = () => {
+            document.getElementById('screen-game').style.display = 'flex';
+            if(window.App.applySkin) window.App.applySkin();
+            setTimeout(() => Game.init(Math.floor(Math.random() * 100000)), 100);
+        };
+
+        window.App.findMatch = () => {
+            document.getElementById('screen-match').style.display = 'flex';
+            document.getElementById('match-log').innerText = "Đang tìm phòng...";
+            db.ref('waiting').once('value').then(snap => {
+                if(snap.exists()) {
+                    const users = snap.val(); const oppKey = Object.keys(users)[0];
+                    if(oppKey === user) return;
+                    const oppName = users[oppKey]; db.ref('waiting/' + oppKey).remove();
+                    document.getElementById('match-log').innerText = `Tìm thấy: ${oppName}!`;
+                    const mid = 'm_' + Date.now(); const seed = Math.floor(Math.random()*100000); const start = Date.now() + 1000;
+                    db.ref('matches/' + mid).set({ p1: oppName, p2: user, seed: seed, startTime: start, winner: "" });
+                    db.ref('users/' + oppName + '/match').set(mid);
+                    App.enterPvP(mid, seed, oppName, start);
+                } else {
+                    document.getElementById('match-log').innerText = "Đang đợi người khác...";
+                    State.waitingRef = db.ref('waiting/' + user); State.waitingRef.set(user);
+                    State.waitingRef.onDisconnect().remove();
+                    const myMatch = db.ref('users/' + user + '/match');
+                    myMatch.onDisconnect().remove();
+                    
+                    // Fix: Đảm bảo chỉ lắng nghe 1 lần
+                    myMatch.off();
+                    myMatch.on('value', snap => {
+                        const mid = snap.val();
+                        if(mid) {
+                            myMatch.remove(); State.waitingRef.remove();
+                            db.ref('matches/' + mid).once('value').then(ms => { var d = ms.val(); App.enterPvP(mid, d.seed, d.p2, d.startTime); });
+                        }
+                    });
+                }
+            });
+        };
+
+        window.App.cancelMatch = () => { if(State.waitingRef) State.waitingRef.remove(); window.location.href = 'index.html'; };
+
+        window.App.enterPvP = (mid, seed, opp, start) => {
+            State.isPvP = true; State.matchId = mid; State.opponent = opp; State.matchStartTime = start;
+            document.getElementById('screen-match').style.display = 'none';
+            document.getElementById('screen-game').style.display = 'flex';
+            
+            if(window.App.applySkin) window.App.applySkin();
+            
+            document.getElementById('pvp-info').style.display = 'block';
+            document.getElementById('opp-name').innerText = opp;
+            document.getElementById('btn-replay').style.display = 'none'; 
+            
+            Game.init(seed);
+
+            // FIX: Dọn dẹp listener cũ trước khi gán mới
+            if(Listeners.winner) Listeners.winner.off();
+            if(Listeners.dead) Listeners.dead.off();
+
+            Listeners.winner = db.ref('matches/' + mid + '/winner');
+            Listeners.winner.on('value', snap => {
+                var w = snap.val();
+                if(w) {
+                    if(w === "DRAW") Game.showRes("DRAW");
+                    else if(w === user) Game.end(true);
+                    else if(!Game.isOver && !Game.isSpectating) Game.pvpLose();
+                }
+            });
+
+            Listeners.dead = db.ref('matches/'+mid+'/dead');
+            Listeners.dead.on('value', snap => {
+                var d = snap.val(); if(d && d[user] && d[opp]) db.ref('matches/'+mid).update({winner: "DRAW"});
+            });
+            
+            // Handle disconnect lose
+            db.ref('matches/'+mid+'/dead/'+user).onDisconnect().set(true);
+        };
+
+        window.App.quitGame = () => { 
+            // Tắt hết listener khi thoát
+            if(Listeners.winner) Listeners.winner.off();
+            if(Listeners.dead) Listeners.dead.off();
+            if(Listeners.moves) Listeners.moves.off();
+
+            if(State.isPvP && !Game.isOver) db.ref('matches/' + State.matchId).update({winner: State.opponent}); 
+            window.location.href = 'index.html'; 
         };
 
         window.Game = {
@@ -193,6 +187,8 @@
                 if(Game.timer) clearInterval(Game.timer);
                 Game.isOver = false; Game.isSpectating = false; Game.time = 0; Game.flags = 0; Game.revealed = 0; Game.firstClick = true;
                 
+                if(window.App.applySkin) window.App.applySkin();
+
                 if(typeof SeededRandom !== 'undefined') Game.rng = new SeededRandom(seed);
                 else Game.rng = { next: () => Math.random() };
 
@@ -233,10 +229,14 @@
                 
                 if(Game.firstClick) {
                     Game.firstClick = false; 
-                    // TÍNH NĂNG BẢO HỘ: Mở rộng vùng an toàn
-                    // Nếu là chơi đơn (không phải PvP), dùng logic bảo hộ mở rộng
-                    // Nếu là PvP, dùng logic bảo hộ ô click (để đồng bộ seed)
-                    Game.plant(i, !State.isPvP); 
+                    // FIX LỖI DESYNC: Trong PvP, buộc phải dùng seed để rải bom giống hệt nhau
+                    // Không được phép dùng logic "tránh vị trí click đầu tiên" (wideOpen) 
+                    // vì vị trí click của 2 người chơi là khác nhau.
+                    // Nếu là PvP: forbidden = [] (Chấp nhận rủi ro đen đủi lượt đầu để đảm bảo công bằng)
+                    // Nếu là Chơi đơn: forbidden = [i] (Bảo hộ người chơi)
+                    
+                    let safeMode = !State.isPvP; 
+                    Game.plant(i, safeMode); 
 
                     if(!fromSpec) Game.timer = setInterval(()=>{
                         if(State.isPvP && State.matchStartTime) Game.time = Math.floor((Date.now() - State.matchStartTime)/1000);
@@ -281,29 +281,25 @@
                 }
             },
 
-            plant: (s, wideOpen) => {
-                let forbidden = [s];
-                // Nếu là chế độ chơi đơn/giải trí, thêm hàng xóm vào danh sách cấm để tạo vùng trống
-                if (wideOpen) {
+            // FIX LOGIC PLANT: Nếu không phải SafeMode (PvP), forbidden là rỗng để đồng bộ
+            plant: (s, safeMode) => {
+                let forbidden = []; // Mặc định không cấm ô nào (cho PvP)
+                
+                if (safeMode) {
+                    forbidden = [s];
+                    // Logic mở rộng vùng an toàn cho chơi đơn
                     forbidden = forbidden.concat(Game.getN(s));
                 }
 
                 let c = 0; 
                 while(c < Game.bombs) { 
                     let r = Math.floor(Game.rng.next() * 100);
-                    // Kiểm tra không trùng vị trí cấm
+                    // Chỉ kiểm tra forbidden nếu nó có dữ liệu
                     if(!forbidden.includes(r) && Game.grid[r] !== 'B') { 
                         Game.grid[r] = 'B'; c++; 
                     } 
                 }
-                // Tính số
                 for(let i=0; i<100; i++) if(Game.grid[i]!=='B') Game.grid[i] = Game.getN(i).filter(n=>Game.grid[n]==='B').length;
-                
-                // Nếu mở rộng, đảm bảo ô click là 0
-                if (wideOpen && Game.grid[s] !== 0) {
-                    // Fallback (hiếm): Nếu thuật toán trên vẫn không tạo ra số 0, xóa bom xung quanh thủ công
-                    // Nhưng với logic forbidden ở trên thì 99% là 0 rồi.
-                }
             },
 
             getN: (i) => { const w=10, l=i%w===0, r=i%w===w-1; return [!l?i-1:-1, !r?i+1:-1, i-w, i+w, !l?i-w-1:-1, !r?i-w+1:-1, !l?i+w-1:-1, !r?i+w+1:-1].filter(x=>x>=0&&x<100); },
@@ -350,7 +346,11 @@
                 Game.revealed = 0;
                 if(State.matchStartTime) { Game.timer = setInterval(()=>{ Game.time = Math.floor((Date.now() - State.matchStartTime)/1000); document.getElementById('g-time').innerText = Game.time; }, 1000); }
 
-                db.ref('matches/'+State.matchId+'/moves/'+State.opponent).on('value', snap => {
+                // FIX: Lưu listener để dọn dẹp sau này
+                if(Listeners.moves) Listeners.moves.off();
+                Listeners.moves = db.ref('matches/'+State.matchId+'/moves/'+State.opponent);
+                
+                Listeners.moves.on('value', snap => {
                     if(snap.exists()) {
                         const m = snap.val();
                         Object.keys(m).forEach(k => { 
@@ -363,7 +363,7 @@
                     }
                 });
             },
-            togglePC: () => { Game.isPC = !Game.isPC; var s=document.getElementById('pc-switch'); var h=document.getElementById('pc-hint'); var m=document.getElementById('mob-ctrl'); if(Game.isPC) { s.classList.add('on'); h.style.display='block'; m.style.display='none'; } else { s.classList.remove('on'); h.style.display='none'; m.style.display='flex'; } },
+            togglePC: () => { Game.isPC = !Game.isPC; var s=document.getElementById('pc-switch'); var h=document.getElementById('pc-hint'); var m=document.getElementById('mob-ctrl'); if(Game.isPC) { s.classList.add('on'); h.style.display='block'; s.style.background='rgba(59,130,246,0.5)'; s.querySelector('.pc-dot').style.background='#10b981'; m.style.display='none'; } else { s.classList.remove('on'); h.style.display='none'; s.style.background='rgba(0,0,0,0.3)'; s.querySelector('.pc-dot').style.background='#64748b'; m.style.display='flex'; } },
             setMode: (m) => { Game.mode=m; document.getElementById('btn-dig').className='mode-btn '+(m==='dig'?'active':''); document.getElementById('btn-flag').className='mode-btn flag '+(m==='flag'?'active':''); }
         };
 

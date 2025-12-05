@@ -6,6 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <title>Minesweeper Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap" rel="stylesheet"> 
     <link rel="stylesheet" href="style.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -18,7 +19,7 @@
         🎮 HUB
     </a>
 
-    <div id="user-badge" class="user-badge" onclick="App.editProfile()">
+    <div id="user-badge" class="user-badge" style="position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 30px; font-size: 0.9rem; font-weight: 700; display: none; align-items: center; gap: 8px; cursor: pointer;" onclick="App.editProfile()">
         <span>👤 <span id="u-name">...</span></span> 
         <span style="font-size: 0.8rem; opacity: 0.7;">✏️</span>
     </div>
@@ -27,7 +28,7 @@
         <div class="card">
             <h1>ĐĂNG NHẬP</h1>
             <div class="input-group" style="text-align: left; width: 100%;">
-                <span class="input-label">Tên người chơi</span>
+                <span class="input-label" style="display:block; margin-bottom:5px; font-weight:bold;">Tên người chơi</span>
                 <input type="text" id="inp-name" placeholder="Ví dụ: ProGamer" maxlength="12">
             </div>
             <button class="btn btn-primary" id="btn-login" onclick="App.login()" style="width:100%">BẮT ĐẦU</button>
@@ -38,150 +39,241 @@
     <div id="screen-slogan" class="screen" style="justify-content: center;">
         <div class="card">
             <h1>HỒ SƠ</h1>
-            <h3 id="welcome-user" style="color:var(--primary); margin-bottom: 20px;"></h3>
+            <h3 id="welcome-user" style="color:#3b82f6; margin-bottom: 20px;"></h3>
             <div class="input-group" style="text-align: left; width: 100%;">
-                <span class="input-label">Mô tả / Slogan (Ngắn gọn)</span>
+                <span class="input-label" style="display:block; margin-bottom:5px; font-weight:bold;">Mô tả / Slogan (Ngắn gọn)</span>
                 <input type="text" id="inp-desc" placeholder="Ví dụ: Bất bại!" maxlength="25">
             </div>
             <button class="btn btn-primary" onclick="App.saveSlogan()" style="width:100%">HOÀN TẤT</button>
         </div>
     </div>
 
-    <div id="screen-menu" class="screen" style="justify-content: center;">
-        <h1>MINESWEEPER</h1>
+    <div id="screen-menu" class="screen screen-menu" style="justify-content: center; padding-top: 40px;">
+        <h1 style="margin-bottom: 30px; font-size: 2.5rem; text-shadow: 0 0 20px rgba(59,130,246,0.5);">MINESWEEPER</h1>
         
-        <button class="btn btn-primary" onclick="window.location.href='choi.html'">
-            🎮 CHƠI ĐƠN
+        <button class="btn-menu btn-classic" onclick="window.location.href='choi.html'">
+            <div style="display:flex; align-items:center;">
+                <div class="btn-icon-large">💣</div>
+                <div class="btn-text">
+                    <span class="btn-title">CHƠI ĐƠN</span>
+                    <span class="btn-sub">Luyện tập kỹ năng</span>
+                </div>
+            </div>
+            <div style="font-size:1.5rem">➡️</div>
         </button>
 
-        <button class="btn btn-pvp" onclick="window.location.href='choi.html?mode=pvp'">
-            <div style="font-size:1.1rem; font-weight:900">⚔️ ĐẤU PVP</div>
-            <div class="pvp-stats">Chờ: <span id="stat-wait">0</span></div>
+        <button class="btn-menu btn-pvp-mode" onclick="window.location.href='choi.html?mode=pvp'">
+            <div style="display:flex; align-items:center;">
+                <div class="btn-icon-large">⚔️</div>
+                <div class="btn-text">
+                    <span class="btn-title">ĐẤU PVP</span>
+                    <span class="btn-sub">Đang chờ: <span id="stat-wait" style="font-weight:900; color:#fcd34d">0</span></span>
+                </div>
+            </div>
+            <div style="font-size:1.5rem">🔥</div>
         </button>
 
-        <button class="btn" style="background: linear-gradient(135deg, #a855f7, #d946ef); border:none; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.5);" onclick="window.location.href='giaitri.html'">
-            🎪 CHẾ ĐỘ GIẢI TRÍ
+        <button class="btn-menu btn-fun" onclick="window.location.href='giaitri.html'">
+            <div style="display:flex; align-items:center;">
+                <div class="btn-icon-large">👹</div>
+                <div class="btn-text">
+                    <span class="btn-title">ĐẠI CHIẾN BOSS</span>
+                    <span class="btn-sub">Chế độ giải trí</span>
+                </div>
+            </div>
+            <div style="font-size:1.5rem">🎪</div>
         </button>
 
-        <button class="btn" onclick="window.location.href='xephang.html'">
-            🏆 BẢNG XẾP HẠNG
-        </button>
+        <div class="menu-grid">
+            <button class="btn-menu btn-skin" onclick="App.showScreen('skins')">
+                <div class="btn-icon-large" style="margin:0 0 5px 0;">🎨</div>
+                <span class="btn-title" style="font-size:0.9rem">SKIN</span>
+            </button>
 
-        <button class="btn btn-gold" onclick="window.location.href='thanhtuu.html'">
-            🎖️ THÀNH TỰU
-        </button>
+            <button class="btn-menu btn-rank" onclick="window.location.href='xephang.html'">
+                <div class="btn-icon-large" style="margin:0 0 5px 0;">🏆</div>
+                <span class="btn-title" style="font-size:0.9rem">XẾP HẠNG</span>
+            </button>
 
-        <button class="btn btn-danger" onclick="App.logout()" style="margin-top: 20px;">
+            <button class="btn-menu btn-ach" onclick="window.location.href='thanhtuu.html'">
+                <span style="font-size:1.5rem">🎖️</span>
+                <span class="btn-title" style="font-size:1rem">THÀNH TỰU & HUY HIỆU</span>
+            </button>
+        </div>
+
+        <button class="btn-menu btn-logout" onclick="App.logout()">
             ĐĂNG XUẤT
         </button>
         
-        <div style="position:absolute; bottom:20px; color:#64748b; font-size:0.8rem">Ver: 25.0 (Hub Added)</div>
+        <div style="position:absolute; bottom:20px; color:#64748b; font-size:0.7rem; font-family:monospace;">
+            Ver: 25.3 (Ultra UI)
+        </div>
+    </div>
+
+    <div id="screen-skins" class="screen" style="justify-content: center;">
+        <div class="game-header">
+            <button class="btn-icon" onclick="App.showMenu()">⬅</button>
+            <h2 style="margin:0">TRANG BỊ SKIN</h2>
+            <div style="width: 44px;"></div>
+        </div>
+        <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:15px; text-align:center;">Skin chỉ hiển thị khi vào màn chơi game.</p>
+        <div id="skin-list" style="width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; padding-bottom: 50px;">
+            </div>
     </div>
 
     <script>
         const LocalState = { user: null, data: {}, isEditing: false };
 
-        window.App = {
-            init: () => {
-                const savedUser = localStorage.getItem('ms_user');
-                if (savedUser) {
-                    LocalState.user = savedUser;
-                    App.finishLogin();
-                } else {
-                    document.getElementById('screen-login').classList.add('active');
-                }
+        window.App = window.App || {}; 
 
-                try {
-                    db.ref('waiting').on('value', snap => {
-                        const count = snap.exists() ? Object.keys(snap.val()).length : 0;
-                        const el = document.getElementById('stat-wait');
-                        if(el) el.innerText = count;
-                    });
-                } catch(e) { console.log("Firebase wait error", e); }
-            },
+        window.App.init = () => {
+            const savedUser = localStorage.getItem('ms_user');
+            if (savedUser) {
+                LocalState.user = savedUser;
+                App.finishLogin();
+            } else {
+                document.getElementById('screen-login').classList.add('active');
+            }
 
-            login: () => {
-                const name = document.getElementById('inp-name').value.trim().replace(/[^a-zA-Z0-9]/g, "");
-                if (name.length < 2) return alert("Tên quá ngắn!");
+            if(window.App.applySkin) window.App.applySkin();
+
+            try {
+                db.ref('waiting').on('value', snap => {
+                    const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+                    const el = document.getElementById('stat-wait');
+                    if(el) el.innerText = count;
+                });
+            } catch(e) { console.log("Firebase wait error", e); }
+        };
+
+        window.App.renderSkins = () => {
+            const currentSkin = localStorage.getItem('ms_skin') || 'default';
+            const container = document.getElementById('skin-list');
+            container.innerHTML = '';
+
+            const skins = window.SKINS || [];
+            
+            skins.forEach(skin => {
+                const isActive = skin.id === currentSkin;
+                const btn = document.createElement('div');
                 
-                document.getElementById('btn-login').innerText = "Đang tải...";
-                LocalState.user = name;
+                // Style cho item chọn skin
+                btn.style.cssText = `
+                    padding: 15px; cursor: pointer; transition: 0.2s;
+                    border: 3px solid ${isActive ? '#10b981' : 'transparent'};
+                    background: ${skin.color};
+                    color: ${skin.id === 'default' ? 'white' : 'black'};
+                    display: flex; align-items: center; gap: 15px; text-align: left;
+                    border-radius: 16px;
+                    opacity: ${isActive ? '1' : '0.8'};
+                    transform: ${isActive ? 'scale(1.02)' : 'scale(1)'};
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                    margin-bottom: 10px;
+                `;
+                
+                btn.onclick = () => {
+                    localStorage.setItem('ms_skin', skin.id);
+                    window.App.renderSkins();      
+                };
 
-                db.ref('users/' + name).once('value').then(snap => {
-                    if (snap.exists()) {
-                        LocalState.data = snap.val();
-                        if (!LocalState.data.achievements) LocalState.data.achievements = {};
-                        
-                        if (LocalState.isEditing) {
-                            document.getElementById('inp-desc').value = LocalState.data.desc || "";
-                            document.getElementById('welcome-user').innerText = `Cập nhật: ${name}`;
-                            App.showScreen('slogan');
-                        } else {
-                            localStorage.setItem('ms_user', name);
-                            App.finishLogin();
-                        }
-                    } else {
-                        LocalState.data = { wins: 0, losses: 0, desc: "", achievements: {} };
-                        document.getElementById('welcome-user').innerText = `Xin chào ${name}!`;
+                btn.innerHTML = `
+                    <div style="font-size: 2rem;">
+                        ${skin.id === 'classic' ? '🪟' : (skin.id === 'pink' ? '🌸' : '💠')}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 900; font-size: 1.1rem;">${skin.name}</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">${skin.desc}</div>
+                    </div>
+                    <div style="font-size: 1.5rem;">${isActive ? '✅' : ''}</div>
+                `;
+                container.appendChild(btn);
+            });
+        };
+
+        window.App.login = () => {
+            const name = document.getElementById('inp-name').value.trim().replace(/[^a-zA-Z0-9]/g, "");
+            if (name.length < 2) return alert("Tên quá ngắn!");
+            
+            document.getElementById('btn-login').innerText = "Đang tải...";
+            LocalState.user = name;
+
+            db.ref('users/' + name).once('value').then(snap => {
+                if (snap.exists()) {
+                    LocalState.data = snap.val();
+                    if (!LocalState.data.achievements) LocalState.data.achievements = {};
+                    
+                    if (LocalState.isEditing) {
+                        document.getElementById('inp-desc').value = LocalState.data.desc || "";
+                        document.getElementById('welcome-user').innerText = `Cập nhật: ${name}`;
                         App.showScreen('slogan');
+                    } else {
+                        localStorage.setItem('ms_user', name);
+                        App.finishLogin();
                     }
-                }).catch(e => {
-                    alert("Lỗi kết nối: " + e.message);
-                    document.getElementById('btn-login').innerText = "TIẾP TỤC";
-                });
-            },
-
-            saveSlogan: () => {
-                const desc = document.getElementById('inp-desc').value.trim();
-                LocalState.data.desc = desc;
-                
-                db.ref('users/' + LocalState.user).update(LocalState.data).then(() => {
-                    localStorage.setItem('ms_user', LocalState.user);
-                    LocalState.isEditing = false;
-                    App.finishLogin();
-                });
-            },
-
-            finishLogin: () => {
-                document.getElementById('u-name').innerText = LocalState.user;
-                document.getElementById('user-badge').style.display = 'flex';
-                document.getElementById('btn-login').innerText = "TIẾP TỤC";
-                document.getElementById('btn-cancel-login').style.display = 'none';
-                App.showMenu();
-            },
-
-            editProfile: () => {
-                LocalState.isEditing = true;
-                document.getElementById('inp-name').value = LocalState.user;
-                document.getElementById('btn-login').innerText = "CẬP NHẬT";
-                document.getElementById('btn-cancel-login').style.display = 'block';
-                App.showScreen('login');
-            },
-
-            logout: () => {
-                localStorage.removeItem('ms_user');
-                location.reload();
-            },
-
-            showMenu: () => {
-                LocalState.isEditing = false;
-                App.showScreen('menu');
-            },
-
-            showScreen: (id) => {
-                document.querySelectorAll('.screen').forEach(s => {
-                    s.classList.remove('active');
-                    s.style.display = 'none'; 
-                });
-                const target = document.getElementById('screen-' + id);
-                if(target) {
-                    target.classList.add('active');
-                    target.style.display = 'flex';
+                } else {
+                    LocalState.data = { wins: 0, losses: 0, desc: "", achievements: {} };
+                    document.getElementById('welcome-user').innerText = `Xin chào ${name}!`;
+                    App.showScreen('slogan');
                 }
+            }).catch(e => {
+                alert("Lỗi kết nối: " + e.message);
+                document.getElementById('btn-login').innerText = "TIẾP TỤC";
+            });
+        };
+
+        window.App.saveSlogan = () => {
+            const desc = document.getElementById('inp-desc').value.trim();
+            LocalState.data.desc = desc;
+            
+            db.ref('users/' + LocalState.user).update(LocalState.data).then(() => {
+                localStorage.setItem('ms_user', LocalState.user);
+                LocalState.isEditing = false;
+                App.finishLogin();
+            });
+        };
+
+        window.App.finishLogin = () => {
+            document.getElementById('u-name').innerText = LocalState.user;
+            document.getElementById('user-badge').style.display = 'flex';
+            document.getElementById('btn-login').innerText = "TIẾP TỤC";
+            document.getElementById('btn-cancel-login').style.display = 'none';
+            App.showMenu();
+        };
+
+        window.App.editProfile = () => {
+            LocalState.isEditing = true;
+            document.getElementById('inp-name').value = LocalState.user;
+            document.getElementById('btn-login').innerText = "CẬP NHẬT";
+            document.getElementById('btn-cancel-login').style.display = 'block';
+            App.showScreen('login');
+        };
+
+        window.App.logout = () => {
+            localStorage.removeItem('ms_user');
+            location.reload();
+        };
+
+        window.App.showMenu = () => {
+            LocalState.isEditing = false;
+            App.showScreen('menu');
+        };
+
+        window.App.showScreen = (id) => {
+            document.querySelectorAll('.screen').forEach(s => {
+                s.classList.remove('active');
+                s.style.display = 'none'; 
+            });
+            const target = document.getElementById('screen-' + id);
+            if(target) {
+                target.classList.add('active');
+                target.style.display = 'flex';
+            }
+            if (id === 'skins') {
+                window.App.renderSkins();
             }
         };
 
-        window.onload = App.init;
+        window.onload = window.App.init;
     </script>
 </body>
 </html>
