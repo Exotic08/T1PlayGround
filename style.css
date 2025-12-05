@@ -141,3 +141,43 @@ input:focus { border-color: var(--primary); }
 .spectator-mode { border: 2px solid var(--gold); box-shadow: 0 0 15px var(--gold); }
 #spec-msg { position: absolute; top: 70px; background: var(--gold); color: black; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; z-index: 90; display: none; font-weight: bold;}
 .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 50px; z-index: 200; display: none; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+/* --- NÚT HUB (Góc Trên Trái) --- */
+.btn-hub {
+    position: absolute; 
+    top: 20px; 
+    left: 20px; 
+    z-index: 100; /* Nổi trên cùng */
+    
+    background: rgba(0, 0, 0, 0.4); 
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #94a3b8; /* Màu chữ xám nhạt */
+    
+    padding: 8px 16px; 
+    border-radius: 30px; /* Bo tròn viên thuốc */
+    
+    font-size: 0.85rem; 
+    font-weight: 800; 
+    text-decoration: none; /* Bỏ gạch chân */
+    
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+    
+    backdrop-filter: blur(10px); 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Hiệu ứng khi di chuột */
+.btn-hub:hover {
+    background: rgba(16, 185, 129, 0.2); /* Ánh xanh lá */
+    color: white;
+    border-color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Hiệu ứng khi ấn */
+.btn-hub:active {
+    transform: scale(0.95);
+}

@@ -8,32 +8,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     
-    <script>
-        window.onerror = function(msg, url, line) {
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('error-box').style.display = 'flex';
-            document.getElementById('error-content').innerText = "Lỗi: " + msg + "\nTại dòng: " + line;
-        };
-    </script>
-
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="config.js"></script>
 
     <style>
-        /* CSS Riêng để fix hiển thị */
-        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        #error-box { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; color: #ef4444; padding: 20px; text-align: center; }
+        /* CSS FIX CỨNG */
+        body { overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* Fix bàn cờ */
         #board-container {
             width: 95vw; max-width: 400px;
-            aspect-ratio: 1/1;
+            aspect-ratio: 1 / 1;
             background: rgba(30, 41, 59, 0.8);
-            padding: 10px; border-radius: 16px;
-            margin: 0 auto; border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px; border-radius: 16px;
+            margin: 0 auto; border: 1px solid rgba(255,255,255,0.15);
             display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
+        
         #grid {
             display: grid !important;
             width: 100%; height: 100%;
@@ -41,37 +33,53 @@
             grid-template-columns: repeat(10, 1fr);
             grid-template-rows: repeat(10, 1fr);
         }
+
+        .cell {
+            width: 100%; height: 100%;
+            background: #334155; border-radius: 4px; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            font-weight: 900; font-size: clamp(14px, 5vw, 22px); color: white;
+            box-shadow: 0 3px 0 #1e293b; transition: transform 0.1s;
+            user-select: none; position: relative;
+        }
+        .cell:active { transform: translateY(2px); box-shadow: none; }
         
-        /* Hiển thị màn hình active */
-        .screen.active { display: flex !important; }
+        .cell.revealed { 
+            background: #1e293b; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); 
+            transform: translateY(2px); border: 1px solid rgba(255,255,255,0.05); 
+            cursor: default; 
+        }
+        .cell.flagged { color: #ef4444 !important; text-shadow: 0 0 5px red; }
+        .cell.flagged::after { content: '🚩'; font-size: 0.8em; }
+        .cell.bomb { background: #ef4444 !important; color: white !important; box-shadow: none; animation: shake 0.4s; z-index: 2; }
+        .cell.bomb::after { content: '💣'; }
+        .cell.chord-error { animation: shake 0.2s; }
+        .c1{color:#60a5fa} .c2{color:#4ade80} .c3{color:#f87171} .c4{color:#c084fc} .c5{color:#fbbf24}
+        
+        #game-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15,23,42,0.98); z-index: 100;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 16px;
+        }
+        #game-overlay.show { display: flex !important; }
+        
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
     </style>
 </head>
 <body>
     
-    <div id="loading-screen">
-        <div class="loader"></div>
-        <p style="margin-top:10px">Đang tải tài nguyên...</p>
-    </div>
-
-    <div id="error-box">
-        <h2 style="font-size: 3rem;">⚠️</h2>
-        <h3>RẤT TIẾC, ĐÃ CÓ LỖI XẢY RA!</h3>
-        <p id="error-content" style="color: #cbd5e1; margin: 20px 0;">...</p>
-        <button class="btn btn-primary" onclick="location.reload()">TẢI LẠI TRANG</button>
-        <a href="index.html" class="btn" style="margin-top:10px">VỀ TRANG CHỦ</a>
-    </div>
-
     <div id="toast" class="toast"><span>🏆</span><span id="toast-msg"></span></div>
     <div id="spec-msg" style="display:none; position:absolute; top:70px; background:#fbbf24; color:black; padding:5px 15px; border-radius:20px; font-weight:bold; z-index:90;">👁️ ĐANG XEM ĐỐI THỦ</div>
 
-    <div id="screen-match" class="screen">
+    <div id="screen-match" class="screen" style="justify-content: center; display: none;">
         <h2 style="color: #10b981">TÌM ĐỐI THỦ</h2>
-        <div class="loader" style="margin: 20px;"></div>
+        <div class="loader" style="border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px;"></div>
         <p id="match-log" style="color: #94a3b8">Đang kết nối...</p>
         <button class="btn btn-danger" onclick="App.cancelMatch()">HỦY BỎ</button>
     </div>
 
-    <div id="screen-game" class="screen">
+    <div id="screen-game" class="screen" style="display: none;">
         <div class="game-header">
             <a href="index.html" class="btn-icon" onclick="App.quitGame()">⬅</a>
             <div id="pc-switch" class="pc-switch" onclick="Game.togglePC()">
@@ -89,7 +97,7 @@
         <div id="board-container">
             <div id="grid"></div>
             
-            <div id="game-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.95); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; border-radius: 16px;">
+            <div id="game-overlay" style="display:none;">
                 <h1 id="res-title" style="font-size:3rem; margin-bottom:10px; font-weight:900"></h1>
                 <p id="res-desc" style="color:#cbd5e1; margin-bottom:30px; text-align:center; font-size:1.2rem"></p>
                 <button id="btn-watch" class="btn" style="background:#8b5cf6; width:80%; display:none; margin-bottom:10px;" onclick="Game.spectate()">👁️ XEM ĐỐI THỦ</button>
@@ -109,109 +117,59 @@
     </div>
 
     <script>
-        // --- 1. KHỞI TẠO BIẾN ---
-        let user;
-        try {
-            user = checkLogin(); // Gọi từ config.js
-        } catch(e) {
-            // Nếu config.js lỗi hoặc chưa tải, user là null
-            console.error("Lỗi checkLogin:", e);
-        }
-
+        const user = checkLogin();
         const urlParams = new URLSearchParams(window.location.search);
         const isPvPMode = urlParams.get('mode') === 'pvp';
         
         let State = { matchId: null, opponent: null, waitingRef: null, isPvP: isPvPMode, matchStartTime: 0 };
 
-        // --- 2. KHỞI CHẠY ---
         window.onload = function() {
-            // Tắt màn hình loading
-            document.getElementById('loading-screen').style.display = 'none';
-
-            if (!user) {
-                // Nếu chưa đăng nhập (hoặc lỗi), về trang chủ
-                window.location.href = 'index.html';
-                return;
-            }
-
-            if (isPvPMode) {
-                App.showScreen('match');
-                App.findMatch();
-            } else {
-                App.showScreen('game');
-                setTimeout(() => Game.init(Math.floor(Math.random() * 100000)), 100);
-            }
+            if (isPvPMode) { App.findMatch(); } else { App.startSingle(); }
         };
 
-        // --- 3. APP LOGIC ---
         window.App = {
-            showScreen: (id) => {
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                const el = document.getElementById('screen-' + id);
-                if(el) el.classList.add('active');
+            startSingle: () => {
+                document.getElementById('screen-game').style.display = 'flex';
+                setTimeout(() => Game.init(Math.floor(Math.random() * 100000)), 100);
             },
-
-            cancelMatch: () => {
-                if(State.waitingRef) State.waitingRef.remove();
-                window.location.href = 'index.html';
-            },
-
-            quitGame: () => {
-                if(State.isPvP && !Game.isOver) db.ref('matches/' + State.matchId).update({winner: State.opponent});
-                window.location.href = 'index.html';
-            },
-
-            // PVP LOGIC
             findMatch: () => {
+                document.getElementById('screen-match').style.display = 'flex';
                 document.getElementById('match-log').innerText = "Đang tìm phòng...";
                 db.ref('waiting').once('value').then(snap => {
                     if(snap.exists()) {
                         const users = snap.val(); const oppKey = Object.keys(users)[0];
-                        if(oppKey === user) return; 
-                        const oppName = users[oppKey];
-                        db.ref('waiting/' + oppKey).remove(); 
+                        if(oppKey === user) return;
+                        const oppName = users[oppKey]; db.ref('waiting/' + oppKey).remove();
                         document.getElementById('match-log').innerText = `Tìm thấy: ${oppName}!`;
-                        
-                        const mid = 'm_' + Date.now();
-                        const seed = Math.floor(Math.random()*100000);
-                        const start = Date.now() + 1000;
-
+                        const mid = 'm_' + Date.now(); const seed = Math.floor(Math.random()*100000); const start = Date.now() + 1000;
                         db.ref('matches/' + mid).set({ p1: oppName, p2: user, seed: seed, startTime: start, winner: "" });
                         db.ref('users/' + oppName + '/match').set(mid);
-                        
                         App.enterPvP(mid, seed, oppName, start);
                     } else {
                         document.getElementById('match-log').innerText = "Đang đợi người khác...";
-                        State.waitingRef = db.ref('waiting/' + user);
-                        State.waitingRef.set(user);
+                        State.waitingRef = db.ref('waiting/' + user); State.waitingRef.set(user);
                         State.waitingRef.onDisconnect().remove();
-
                         const myMatch = db.ref('users/' + user + '/match');
                         myMatch.onDisconnect().remove();
                         myMatch.on('value', snap => {
                             const mid = snap.val();
                             if(mid) {
                                 myMatch.remove(); State.waitingRef.remove();
-                                db.ref('matches/' + mid).once('value').then(ms => {
-                                    var d = ms.val();
-                                    App.enterPvP(mid, d.seed, d.p2, d.startTime);
-                                });
+                                db.ref('matches/' + mid).once('value').then(ms => { var d = ms.val(); App.enterPvP(mid, d.seed, d.p2, d.startTime); });
                             }
                         });
                     }
                 });
             },
-
+            cancelMatch: () => { if(State.waitingRef) State.waitingRef.remove(); window.location.href = 'index.html'; },
             enterPvP: (mid, seed, opp, start) => {
                 State.isPvP = true; State.matchId = mid; State.opponent = opp; State.matchStartTime = start;
-                
-                App.showScreen('game');
+                document.getElementById('screen-match').style.display = 'none';
+                document.getElementById('screen-game').style.display = 'flex';
                 document.getElementById('pvp-info').style.display = 'block';
                 document.getElementById('opp-name').innerText = opp;
                 document.getElementById('btn-replay').style.display = 'none'; 
-
                 Game.init(seed);
-
                 db.ref('matches/' + mid + '/winner').on('value', snap => {
                     var w = snap.val();
                     if(w) {
@@ -221,13 +179,12 @@
                     }
                 });
                 db.ref('matches/'+mid+'/dead').on('value', snap => {
-                    var d = snap.val();
-                    if(d && d[user] && d[opp]) db.ref('matches/'+mid).update({winner: "DRAW"});
+                    var d = snap.val(); if(d && d[user] && d[opp]) db.ref('matches/'+mid).update({winner: "DRAW"});
                 });
-            }
+            },
+            quitGame: () => { if(State.isPvP && !Game.isOver) db.ref('matches/' + State.matchId).update({winner: State.opponent}); window.location.href = 'index.html'; }
         };
 
-        // --- 4. GAME ENGINE ---
         window.Game = {
             w: 10, bombs: 15, grid: [], dom: [], rng: null,
             isOver: false, isPC: false, isSpectating: false, timer: null, time: 0, flags: 0, revealed: 0, firstClick: true, mode: 'dig',
@@ -236,7 +193,6 @@
                 if(Game.timer) clearInterval(Game.timer);
                 Game.isOver = false; Game.isSpectating = false; Game.time = 0; Game.flags = 0; Game.revealed = 0; Game.firstClick = true;
                 
-                // Fallback RNG nếu config lỗi
                 if(typeof SeededRandom !== 'undefined') Game.rng = new SeededRandom(seed);
                 else Game.rng = { next: () => Math.random() };
 
@@ -252,7 +208,6 @@
                 
                 Game.grid = Array(100).fill(0); Game.dom = [];
                 const frag = document.createDocumentFragment();
-                
                 for(let i=0; i<100; i++){
                     const c = document.createElement('div'); 
                     c.className = 'cell';
@@ -277,7 +232,12 @@
                 if(c.classList.contains('revealed') || c.classList.contains('flagged')) return;
                 
                 if(Game.firstClick) {
-                    Game.firstClick = false; Game.plant(i);
+                    Game.firstClick = false; 
+                    // TÍNH NĂNG BẢO HỘ: Mở rộng vùng an toàn
+                    // Nếu là chơi đơn (không phải PvP), dùng logic bảo hộ mở rộng
+                    // Nếu là PvP, dùng logic bảo hộ ô click (để đồng bộ seed)
+                    Game.plant(i, !State.isPvP); 
+
                     if(!fromSpec) Game.timer = setInterval(()=>{
                         if(State.isPvP && State.matchStartTime) Game.time = Math.floor((Date.now() - State.matchStartTime)/1000);
                         else Game.time++;
@@ -301,7 +261,7 @@
             toggleFlag: (i) => {
                 const c = Game.dom[i]; if(c.classList.contains('revealed')) return;
                 if(c.classList.contains('flagged')) { c.classList.remove('flagged'); c.innerText = ''; Game.flags--; }
-                else if(Game.flags < 15) { c.classList.add('flagged'); c.innerText = '🚩'; Game.flags++; }
+                else if(Game.flags < 15) { c.classList.add('flagged'); c.innerText = ''; Game.flags++; }
                 document.getElementById('g-flags').innerText = Game.bombs - Game.flags;
                 if(State.isPvP && !Game.isSpectating) {
                     var val = c.classList.contains('flagged') ? 3 : null;
@@ -315,15 +275,35 @@
                 if(flags === Game.grid[i]) {
                     if(navigator.vibrate) navigator.vibrate(20);
                     n.forEach(x => { if(!Game.dom[x].classList.contains('flagged') && !Game.dom[x].classList.contains('revealed')) Game.dig(x); });
-                } else { Game.dom[i].classList.add('chord-error'); setTimeout(()=>Game.dom[i].classList.remove('chord-error'), 300); }
+                } else { 
+                    Game.dom[i].classList.add('chord-error'); 
+                    setTimeout(()=>Game.dom[i].classList.remove('chord-error'), 300); 
+                }
             },
 
-            plant: (s) => {
-                let c=0; while(c<15) { 
-                    let r = Game.rng ? Math.floor(Game.rng.next()*100) : Math.floor(Math.random()*100);
-                    if(r!==s && Game.grid[r]!=='B') { Game.grid[r]='B'; c++; } 
+            plant: (s, wideOpen) => {
+                let forbidden = [s];
+                // Nếu là chế độ chơi đơn/giải trí, thêm hàng xóm vào danh sách cấm để tạo vùng trống
+                if (wideOpen) {
+                    forbidden = forbidden.concat(Game.getN(s));
                 }
+
+                let c = 0; 
+                while(c < Game.bombs) { 
+                    let r = Math.floor(Game.rng.next() * 100);
+                    // Kiểm tra không trùng vị trí cấm
+                    if(!forbidden.includes(r) && Game.grid[r] !== 'B') { 
+                        Game.grid[r] = 'B'; c++; 
+                    } 
+                }
+                // Tính số
                 for(let i=0; i<100; i++) if(Game.grid[i]!=='B') Game.grid[i] = Game.getN(i).filter(n=>Game.grid[n]==='B').length;
+                
+                // Nếu mở rộng, đảm bảo ô click là 0
+                if (wideOpen && Game.grid[s] !== 0) {
+                    // Fallback (hiếm): Nếu thuật toán trên vẫn không tạo ra số 0, xóa bom xung quanh thủ công
+                    // Nhưng với logic forbidden ở trên thì 99% là 0 rồi.
+                }
             },
 
             getN: (i) => { const w=10, l=i%w===0, r=i%w===w-1; return [!l?i-1:-1, !r?i+1:-1, i-w, i+w, !l?i-w-1:-1, !r?i-w+1:-1, !l?i+w-1:-1, !r?i+w+1:-1].filter(x=>x>=0&&x<100); },
@@ -351,47 +331,42 @@
                 else if(w) { t.innerText="CHIẾN THẮNG!"; t.style.color="#4ade80"; d.innerText = State.isPvP ? `Thắng đối thủ: ${State.opponent}` : "Xuất sắc!"; if(!State.isPvP) { const r = saveWin(Game.time); d.innerHTML+= (r?"<br>🚀 KỶ LỤC MỚI!":""); } br.style.display='block'; bw.style.display='none'; }
                 else {
                     t.innerText="THUA RỒI!"; t.style.color="#ef4444";
-                    if(State.isPvP) { d.innerText = Game.isSpectating ? "Đối thủ đã thắng!" : "Bạn đã nổ bom!"; br.style.display='none'; bw.style.display=Game.isSpectating?'none':'block'; }
-                    else { d.innerText = "Thử lại nhé!"; saveLoss(); br.style.display='block'; bw.style.display='none'; }
+                    if(State.isPvP) {
+                        d.innerText = Game.isSpectating ? "Đối thủ đã thắng!" : "Bạn đã nổ bom!";
+                        br.style.display='none'; bw.style.display=Game.isSpectating?'none':'block';
+                    } else {
+                        d.innerText = "Thử lại nhé!"; saveLoss();
+                        br.style.display='block'; bw.style.display='none';
+                    }
                 }
                 document.getElementById('game-overlay').style.display = 'flex';
             },
-
             spectate: () => {
                 Game.isSpectating = true;
                 document.getElementById('game-overlay').style.display = 'none';
                 document.getElementById('spec-msg').style.display = 'block';
                 document.getElementById('board-container').classList.add('spectator-mode');
-                
                 Game.dom.forEach(c => { c.className = 'cell'; c.innerText = ''; c.style.background = ''; });
                 Game.revealed = 0;
-                
-                if(State.matchStartTime) {
-                    Game.timer = setInterval(()=>{
-                       Game.time = Math.floor((Date.now() - State.matchStartTime)/1000);
-                       document.getElementById('g-time').innerText = Game.time;
-                    }, 1000);
-                }
+                if(State.matchStartTime) { Game.timer = setInterval(()=>{ Game.time = Math.floor((Date.now() - State.matchStartTime)/1000); document.getElementById('g-time').innerText = Game.time; }, 1000); }
 
                 db.ref('matches/'+State.matchId+'/moves/'+State.opponent).on('value', snap => {
                     if(snap.exists()) {
                         const m = snap.val();
                         Object.keys(m).forEach(k => { 
                             var val = m[k];
-                            if(val === 3) { if(!Game.dom[k].classList.contains('revealed')) { Game.dom[k].classList.add('flagged'); Game.dom[k].innerText='🚩'; } }
+                            if(val === 3) { if(!Game.dom[k].classList.contains('revealed')) { Game.dom[k].classList.add('flagged'); } }
                             else if(val === 2) { Game.dom[k].classList.add('revealed', 'bomb'); Game.dom[k].innerText='💣'; Game.dom[k].style.background="#ef4444"; }
                             else if(val === 1 && !Game.dom[k].classList.contains('revealed')) { Game.dig(parseInt(k), true); }
-                            else if(val === null && Game.dom[k].classList.contains('flagged')) { Game.dom[k].classList.remove('flagged'); Game.dom[k].innerText=''; }
+                            else if(val === null && Game.dom[k].classList.contains('flagged')) { Game.dom[k].classList.remove('flagged'); }
                         });
                     }
                 });
             },
-
             togglePC: () => { Game.isPC = !Game.isPC; var s=document.getElementById('pc-switch'); var h=document.getElementById('pc-hint'); var m=document.getElementById('mob-ctrl'); if(Game.isPC) { s.classList.add('on'); h.style.display='block'; m.style.display='none'; } else { s.classList.remove('on'); h.style.display='none'; m.style.display='flex'; } },
             setMode: (m) => { Game.mode=m; document.getElementById('btn-dig').className='mode-btn '+(m==='dig'?'active':''); document.getElementById('btn-flag').className='mode-btn flag '+(m==='flag'?'active':''); }
         };
 
-        // Helpers
         function saveWin(time) { db.ref('users/'+user).once('value').then(s => { let d = s.val() || {}; let wins = (d.wins||0) + 1; let best = d.bestTime ? Math.min(d.bestTime, time) : time; db.ref('users/'+user).update({wins: wins, bestTime: best}); if(window.App && window.App.unlockAch) { window.App.unlockAch('win1'); if(wins>=10) window.App.unlockAch('win10'); if(time<60) window.App.unlockAch('speed60'); } return time === d.bestTime; }); }
         function saveLoss() { db.ref('users/'+user).once('value').then(s => { let d = s.val() || {}; db.ref('users/'+user).update({losses: (d.losses||0) + 1}); }); }
     </script>

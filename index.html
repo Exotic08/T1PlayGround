@@ -14,6 +14,10 @@
 </head>
 <body>
 
+    <a href="https://exotic08.github.io/Hub/" class="btn-hub">
+        🎮 HUB
+    </a>
+
     <div id="user-badge" class="user-badge" onclick="App.editProfile()">
         <span>👤 <span id="u-name">...</span></span> 
         <span style="font-size: 0.8rem; opacity: 0.7;">✏️</span>
@@ -22,7 +26,7 @@
     <div id="screen-login" class="screen active" style="justify-content: center;">
         <div class="card">
             <h1>ĐĂNG NHẬP</h1>
-            <div class="input-group">
+            <div class="input-group" style="text-align: left; width: 100%;">
                 <span class="input-label">Tên người chơi</span>
                 <input type="text" id="inp-name" placeholder="Ví dụ: ProGamer" maxlength="12">
             </div>
@@ -35,7 +39,7 @@
         <div class="card">
             <h1>HỒ SƠ</h1>
             <h3 id="welcome-user" style="color:var(--primary); margin-bottom: 20px;"></h3>
-            <div class="input-group">
+            <div class="input-group" style="text-align: left; width: 100%;">
                 <span class="input-label">Mô tả / Slogan (Ngắn gọn)</span>
                 <input type="text" id="inp-desc" placeholder="Ví dụ: Bất bại!" maxlength="25">
             </div>
@@ -52,7 +56,7 @@
 
         <button class="btn btn-pvp" onclick="window.location.href='choi.html?mode=pvp'">
             <div style="font-size:1.1rem; font-weight:900">⚔️ ĐẤU PVP</div>
-            <div class="pvp-stats">Chờ: <span id="stat-wait">...</span></div>
+            <div class="pvp-stats">Chờ: <span id="stat-wait">0</span></div>
         </button>
 
         <button class="btn" style="background: linear-gradient(135deg, #a855f7, #d946ef); border:none; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.5);" onclick="window.location.href='giaitri.html'">
@@ -71,19 +75,14 @@
             ĐĂNG XUẤT
         </button>
         
-        <div style="position:absolute; bottom:20px; color:#64748b; font-size:0.8rem">Ver: 24.0 (Full Menu)</div>
+        <div style="position:absolute; bottom:20px; color:#64748b; font-size:0.8rem">Ver: 25.0 (Hub Added)</div>
     </div>
 
     <script>
-        const LocalState = {
-            user: null,
-            data: {},
-            isEditing: false
-        };
+        const LocalState = { user: null, data: {}, isEditing: false };
 
         window.App = {
             init: () => {
-                // Kiểm tra đăng nhập từ LocalStorage
                 const savedUser = localStorage.getItem('ms_user');
                 if (savedUser) {
                     LocalState.user = savedUser;
@@ -92,7 +91,6 @@
                     document.getElementById('screen-login').classList.add('active');
                 }
 
-                // Lắng nghe số người online (cho nút PvP đẹp hơn)
                 try {
                     db.ref('waiting').on('value', snap => {
                         const count = snap.exists() ? Object.keys(snap.val()).length : 0;
@@ -104,29 +102,25 @@
 
             login: () => {
                 const name = document.getElementById('inp-name').value.trim().replace(/[^a-zA-Z0-9]/g, "");
-                if (name.length < 2) return alert("Tên quá ngắn (tối thiểu 2 ký tự)!");
+                if (name.length < 2) return alert("Tên quá ngắn!");
                 
                 document.getElementById('btn-login').innerText = "Đang tải...";
                 LocalState.user = name;
 
-                // Kiểm tra trên Firebase
                 db.ref('users/' + name).once('value').then(snap => {
                     if (snap.exists()) {
                         LocalState.data = snap.val();
                         if (!LocalState.data.achievements) LocalState.data.achievements = {};
                         
                         if (LocalState.isEditing) {
-                            // Đang chế độ sửa -> Nhảy vào Slogan
                             document.getElementById('inp-desc').value = LocalState.data.desc || "";
-                            document.getElementById('welcome-user').innerText = `Cập nhật hồ sơ: ${name}`;
+                            document.getElementById('welcome-user').innerText = `Cập nhật: ${name}`;
                             App.showScreen('slogan');
                         } else {
-                            // Đăng nhập thường -> Vào Menu
                             localStorage.setItem('ms_user', name);
                             App.finishLogin();
                         }
                     } else {
-                        // Người mới -> Vào Slogan
                         LocalState.data = { wins: 0, losses: 0, desc: "", achievements: {} };
                         document.getElementById('welcome-user').innerText = `Xin chào ${name}!`;
                         App.showScreen('slogan');
@@ -151,11 +145,8 @@
             finishLogin: () => {
                 document.getElementById('u-name').innerText = LocalState.user;
                 document.getElementById('user-badge').style.display = 'flex';
-                
-                // Reset UI Login
                 document.getElementById('btn-login').innerText = "TIẾP TỤC";
                 document.getElementById('btn-cancel-login').style.display = 'none';
-                
                 App.showMenu();
             },
 
@@ -190,7 +181,6 @@
             }
         };
 
-        // Khởi chạy
         window.onload = App.init;
     </script>
 </body>
