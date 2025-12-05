@@ -37,7 +37,8 @@ window.SKINS = [
     { id: 'pink',    name: 'Giấc Mơ Hồng', desc: 'Dễ thương', color: '#fce7f3' }
 ];
 
-// 4. BỘ TẠO SỐ NGẪU NHIÊN ĐỒNG BỘ (SEEDED RNG) - QUAN TRỌNG CHO PVP
+// 4. BỘ TẠO SỐ NGẪU NHIÊN ĐỒNG BỘ (SEEDED RNG)
+// Đây là trái tim của việc đồng bộ bàn cờ.
 window.SeededRandom = class {
     constructor(seed) {
         this.seed = seed % 2147483647;
