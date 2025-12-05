@@ -37,7 +37,19 @@ window.SKINS = [
     { id: 'pink',    name: 'Giấc Mơ Hồng', desc: 'Dễ thương', color: '#fce7f3' }
 ];
 
-// 4. LOGIC CHUNG
+// 4. BỘ TẠO SỐ NGẪU NHIÊN ĐỒNG BỘ (SEEDED RNG) - QUAN TRỌNG CHO PVP
+window.SeededRandom = class {
+    constructor(seed) {
+        this.seed = seed % 2147483647;
+        if (this.seed <= 0) this.seed += 2147483646;
+    }
+    next() {
+        this.seed = (this.seed * 16807) % 2147483647;
+        return (this.seed - 1) / 2147483646;
+    }
+};
+
+// 5. LOGIC CHUNG
 window.checkLogin = function() {
     const user = localStorage.getItem('ms_user');
     if (user) return user;
@@ -62,22 +74,14 @@ window.App.unlockAch = (id) => {
     }
 };
 
-// --- HÀM SKIN (QUAN TRỌNG) ---
-// Hàm này sẽ được gọi từ các file html chơi game
 window.App.applySkin = () => {
     const skin = localStorage.getItem('ms_skin') || 'default';
     const board = document.getElementById('board-container');
-    
-    // Chỉ áp dụng nếu tìm thấy bàn cờ (tức là đang ở trang chơi game)
     if (board) {
-        // Reset class
         board.classList.remove('skin-default', 'skin-classic', 'skin-pink');
-        
-        // Apply class mới
         if (skin !== 'default') {
             board.classList.add('skin-' + skin);
         }
-        console.log("Đã áp dụng Skin:", skin);
     }
     return skin;
 };
