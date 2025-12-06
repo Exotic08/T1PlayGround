@@ -3,26 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <title>Minesweeper Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap" rel="stylesheet"> 
     <link rel="stylesheet" href="style.css">
-    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="config.js"></script>
 </head>
 <body>
-
-    <a href="https://exotic08.github.io/Hub/" class="btn-hub">
-        🎮 HUB
-    </a>
-
-    <div id="user-badge" class="user-badge" style="position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 30px; font-size: 0.9rem; font-weight: 700; display: none; align-items: center; gap: 8px; cursor: pointer;" onclick="App.editProfile()">
-        <span>👤 <span id="u-name">...</span></span> 
-        <span style="font-size: 0.8rem; opacity: 0.7;">✏️</span>
-    </div>
+    <div id="btn-mute" onclick="toggleMuteUI()">🔊</div>
+    <a href="https://exotic08.github.io/Hub/" class="btn-hub">🎮 HUB</a>
+    <div id="user-badge" class="user-badge" style="position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 30px; font-size: 0.9rem; font-weight: 700; display: none; align-items: center; gap: 8px; cursor: pointer;" onclick="App.editProfile()"><span>👤 <span id="u-name">...</span></span> <span style="font-size: 0.8rem; opacity: 0.7;">✏️</span></div>
 
     <div id="screen-login" class="screen active" style="justify-content: center;">
         <div class="card">
@@ -37,94 +29,69 @@
     </div>
 
     <div id="screen-slogan" class="screen" style="justify-content: center;">
-        <div class="card">
-            <h1>HỒ SƠ</h1>
-            <h3 id="welcome-user" style="color:#3b82f6; margin-bottom: 20px;"></h3>
-            <div class="input-group" style="text-align: left; width: 100%;">
-                <span class="input-label" style="display:block; margin-bottom:5px; font-weight:bold;">Mô tả / Slogan (Ngắn gọn)</span>
-                <input type="text" id="inp-desc" placeholder="Ví dụ: Bất bại!" maxlength="25">
-            </div>
-            <button class="btn btn-primary" onclick="App.saveSlogan()" style="width:100%">HOÀN TẤT</button>
-        </div>
+        <div class="card"><h1>HỒ SƠ</h1><h3 id="welcome-user" style="color:#3b82f6; margin-bottom: 20px;"></h3><div class="input-group" style="text-align: left; width: 100%;"><span class="input-label" style="display:block; margin-bottom:5px; font-weight:bold;">Mô tả / Slogan (Ngắn gọn)</span><input type="text" id="inp-desc" placeholder="Ví dụ: Bất bại!" maxlength="25"></div><button class="btn btn-primary" onclick="App.saveSlogan()" style="width:100%">HOÀN TẤT</button></div>
     </div>
 
     <div id="screen-menu" class="screen screen-menu" style="justify-content: center; padding-top: 40px;">
-        <h1 style="margin-bottom: 30px; font-size: 2.5rem; text-shadow: 0 0 20px rgba(59,130,246,0.5);">MINESWEEPER</h1>
+        <h1 style="margin-bottom: 30px;">MINESWEEPER</h1>
         
-        <button class="btn-menu btn-classic" onclick="window.location.href='choi.html'">
-            <div style="display:flex; align-items:center;">
-                <div class="btn-icon-large">💣</div>
-                <div class="btn-text">
-                    <span class="btn-title">CHƠI ĐƠN</span>
-                    <span class="btn-sub">Luyện tập kỹ năng</span>
-                </div>
-            </div>
-            <div style="font-size:1.5rem">➡️</div>
-        </button>
-
-        <button class="btn-menu btn-pvp-mode" onclick="window.location.href='choi.html?mode=pvp'">
-            <div style="display:flex; align-items:center;">
-                <div class="btn-icon-large">⚔️</div>
-                <div class="btn-text">
-                    <span class="btn-title">ĐẤU PVP</span>
-                    <span class="btn-sub">Đang chờ: <span id="stat-wait" style="font-weight:900; color:#fcd34d">0</span></span>
-                </div>
-            </div>
-            <div style="font-size:1.5rem">🔥</div>
-        </button>
-
-        <button class="btn-menu btn-fun" onclick="window.location.href='giaitri.html'">
-            <div style="display:flex; align-items:center;">
-                <div class="btn-icon-large">👹</div>
-                <div class="btn-text">
-                    <span class="btn-title">ĐẠI CHIẾN BOSS</span>
-                    <span class="btn-sub">Chế độ giải trí</span>
-                </div>
-            </div>
-            <div style="font-size:1.5rem">🎪</div>
-        </button>
-
-        <div class="menu-grid">
-            <button class="btn-menu btn-skin" onclick="App.showScreen('skins')">
-                <div class="btn-icon-large" style="margin:0 0 5px 0;">🎨</div>
-                <span class="btn-title" style="font-size:0.9rem">SKIN</span>
+        <div id="menu-top" class="menu-group">
+            <button class="btn-menu btn-classic" onclick="window.location.href='choi.html'">
+                <div style="display:flex; align-items:center;"><div class="btn-icon-large">💣</div><div class="btn-text"><span class="btn-title">CHƠI ĐƠN</span><span class="btn-sub">Luyện tập kỹ năng</span></div></div><div style="font-size:1.5rem">➡️</div>
             </button>
-
-            <button class="btn-menu btn-rank" onclick="window.location.href='xephang.html'">
-                <div class="btn-icon-large" style="margin:0 0 5px 0;">🏆</div>
-                <span class="btn-title" style="font-size:0.9rem">XẾP HẠNG</span>
-            </button>
-
-            <button class="btn-menu btn-ach" onclick="window.location.href='thanhtuu.html'">
-                <span style="font-size:1.5rem">🎖️</span>
-                <span class="btn-title" style="font-size:1rem">THÀNH TỰU & HUY HIỆU</span>
+            <button class="btn-menu btn-pvp-mode" onclick="window.location.href='choi.html?mode=pvp'">
+                <div style="display:flex; align-items:center;"><div class="btn-icon-large">⚔️</div><div class="btn-text"><span class="btn-title">ĐẤU PVP</span><span class="btn-sub">Đang chờ: <span id="stat-wait" style="font-weight:900; color:#fcd34d">0</span></span></div></div><div style="font-size:1.5rem">🔥</div>
             </button>
         </div>
 
-        <button class="btn-menu btn-logout" onclick="App.logout()">
-            ĐĂNG XUẤT
+        <button class="btn-menu btn-fun" onclick="App.toggleFun()" id="btn-fun-mode">
+            <div style="display:flex; align-items:center;"><div class="btn-icon-large">🎪</div><div class="btn-text"><span class="btn-title">GIẢI TRÍ</span><span class="btn-sub">Gỡ bom, Boss...</span></div></div><div style="font-size:1.5rem" id="fun-arrow">⬇️</div>
         </button>
-        
-        <div style="position:absolute; bottom:20px; color:#64748b; font-size:0.7rem; font-family:monospace;">
-            Ver: 25.3 (Ultra UI)
+
+        <div id="menu-sub" class="menu-sub">
+            <button class="btn-menu" onclick="window.location.href='datbom.html'" style="background: rgba(13, 148, 136, 0.4); border: 1px solid #2dd4bf;">
+                <div style="display:flex; align-items:center;"><div class="btn-icon-large">💣</div><div class="btn-text"><span class="btn-title">GỠ BOM</span><span class="btn-sub">Tìm 10 quả mìn</span></div></div>
+            </button>
+            <button class="btn-menu" onclick="window.location.href='giaitri.html'" style="background: rgba(124, 58, 237, 0.4); border: 1px solid #a855f7;">
+                <div style="display:flex; align-items:center;"><div class="btn-icon-large">👹</div><div class="btn-text"><span class="btn-title">ĐẠI CHIẾN BOSS</span><span class="btn-sub">RPG Minesweeper</span></div></div>
+            </button>
+        </div>
+
+        <div id="menu-bottom" class="menu-group">
+            <div class="menu-grid">
+                <div class="btn-grid-item btn-skin" onclick="App.showScreen('skins')">
+                    <div style="font-size:1.8rem; margin-bottom:5px;">🎨</div><div style="font-weight:700;">Skin</div>
+                </div>
+                <div class="btn-grid-item btn-rank" onclick="window.location.href='xephang.html'">
+                    <div style="font-size:1.8rem; margin-bottom:5px;">🏆</div><div style="font-weight:700;">Rank</div>
+                </div>
+                <div class="btn-grid-item btn-grid-full btn-ach" onclick="window.location.href='thanhtuu.html'">
+                    <div style="font-size:1.8rem;">🎖️</div><div style="font-weight:700;">Thành Tựu & Huy Hiệu</div>
+                </div>
+            </div>
+            <button class="btn-menu btn-logout" onclick="App.logout()">ĐĂNG XUẤT</button>
+            <div style="margin-top:15px; color:#64748b; font-size:0.7rem; font-family:monospace;">Ver: 30.0 (Ultra Fluid)</div>
         </div>
     </div>
 
     <div id="screen-skins" class="screen" style="justify-content: center;">
-        <div class="game-header">
-            <button class="btn-icon" onclick="App.showMenu()">⬅</button>
-            <h2 style="margin:0">TRANG BỊ SKIN</h2>
-            <div style="width: 44px;"></div>
-        </div>
+        <div class="game-header"><button class="btn-icon" onclick="App.showMenu()">⬅</button><h2 style="margin:0">TRANG BỊ SKIN</h2><div style="width: 44px;"></div></div>
         <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:15px; text-align:center;">Skin chỉ hiển thị khi vào màn chơi game.</p>
-        <div id="skin-list" style="width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; padding-bottom: 50px;">
-            </div>
+        <div id="skin-list" style="width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; padding-bottom: 50px;"></div>
     </div>
 
     <script>
         const LocalState = { user: null, data: {}, isEditing: false };
-
         window.App = window.App || {}; 
+
+        function toggleMuteUI() {
+            if(window.SoundManager) {
+                const muted = window.SoundManager.toggleMute();
+                const btn = document.getElementById('btn-mute');
+                btn.innerText = muted ? '🔇' : '🔊';
+                btn.classList.toggle('muted', muted);
+            }
+        }
 
         window.App.init = () => {
             const savedUser = localStorage.getItem('ms_user');
@@ -134,9 +101,9 @@
             } else {
                 document.getElementById('screen-login').classList.add('active');
             }
-
             if(window.App.applySkin) window.App.applySkin();
-
+            if(window.SoundManager) window.SoundManager.init();
+            
             try {
                 db.ref('waiting').on('value', snap => {
                     const count = snap.exists() ? Object.keys(snap.val()).length : 0;
@@ -146,46 +113,38 @@
             } catch(e) { console.log("Firebase wait error", e); }
         };
 
+        window.App.toggleFun = () => {
+            const top = document.getElementById('menu-top');
+            const bottom = document.getElementById('menu-bottom');
+            const sub = document.getElementById('menu-sub');
+            const arrow = document.getElementById('fun-arrow');
+            
+            if (sub.classList.contains('show')) {
+                sub.classList.remove('show');
+                top.classList.remove('hidden');
+                bottom.classList.remove('hidden');
+                arrow.innerText = '⬇️';
+                document.getElementById('btn-fun-mode').style.background = '';
+            } else {
+                top.classList.add('hidden');
+                bottom.classList.add('hidden');
+                sub.classList.add('show');
+                arrow.innerText = '⬆️';
+                document.getElementById('btn-fun-mode').style.background = 'rgba(168, 85, 247, 0.2)';
+            }
+        };
+
         window.App.renderSkins = () => {
             const currentSkin = localStorage.getItem('ms_skin') || 'default';
             const container = document.getElementById('skin-list');
             container.innerHTML = '';
-
             const skins = window.SKINS || [];
-            
             skins.forEach(skin => {
                 const isActive = skin.id === currentSkin;
                 const btn = document.createElement('div');
-                
-                // Style cho item chọn skin
-                btn.style.cssText = `
-                    padding: 15px; cursor: pointer; transition: 0.2s;
-                    border: 3px solid ${isActive ? '#10b981' : 'transparent'};
-                    background: ${skin.color};
-                    color: ${skin.id === 'default' ? 'white' : 'black'};
-                    display: flex; align-items: center; gap: 15px; text-align: left;
-                    border-radius: 16px;
-                    opacity: ${isActive ? '1' : '0.8'};
-                    transform: ${isActive ? 'scale(1.02)' : 'scale(1)'};
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-                    margin-bottom: 10px;
-                `;
-                
-                btn.onclick = () => {
-                    localStorage.setItem('ms_skin', skin.id);
-                    window.App.renderSkins();      
-                };
-
-                btn.innerHTML = `
-                    <div style="font-size: 2rem;">
-                        ${skin.id === 'classic' ? '🪟' : (skin.id === 'pink' ? '🌸' : '💠')}
-                    </div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 900; font-size: 1.1rem;">${skin.name}</div>
-                        <div style="font-size: 0.8rem; opacity: 0.8;">${skin.desc}</div>
-                    </div>
-                    <div style="font-size: 1.5rem;">${isActive ? '✅' : ''}</div>
-                `;
+                btn.style.cssText = `padding: 15px; cursor: pointer; transition: 0.2s; border: 3px solid ${isActive ? '#10b981' : 'transparent'}; background: ${skin.color}; color: ${skin.id === 'default' ? 'white' : 'black'}; display: flex; align-items: center; gap: 15px; text-align: left; border-radius: 16px; opacity: ${isActive ? '1' : '0.8'}; transform: ${isActive ? 'scale(1.02)' : 'scale(1)'}; box-shadow: 0 5px 15px rgba(0,0,0,0.2); margin-bottom: 10px;`;
+                btn.onclick = () => { localStorage.setItem('ms_skin', skin.id); window.App.renderSkins(); };
+                btn.innerHTML = `<div style="font-size: 2rem;">${skin.id === 'classic' ? '🪟' : (skin.id === 'pink' ? '🌸' : '💠')}</div><div style="flex: 1;"><div style="font-weight: 900; font-size: 1.1rem;">${skin.name}</div><div style="font-size: 0.8rem; opacity: 0.8;">${skin.desc}</div></div><div style="font-size: 1.5rem;">${isActive ? '✅' : ''}</div>`;
                 container.appendChild(btn);
             });
         };
@@ -193,15 +152,12 @@
         window.App.login = () => {
             const name = document.getElementById('inp-name').value.trim().replace(/[^a-zA-Z0-9]/g, "");
             if (name.length < 2) return alert("Tên quá ngắn!");
-            
             document.getElementById('btn-login').innerText = "Đang tải...";
             LocalState.user = name;
-
             db.ref('users/' + name).once('value').then(snap => {
                 if (snap.exists()) {
                     LocalState.data = snap.val();
                     if (!LocalState.data.achievements) LocalState.data.achievements = {};
-                    
                     if (LocalState.isEditing) {
                         document.getElementById('inp-desc').value = LocalState.data.desc || "";
                         document.getElementById('welcome-user').innerText = `Cập nhật: ${name}`;
@@ -215,21 +171,13 @@
                     document.getElementById('welcome-user').innerText = `Xin chào ${name}!`;
                     App.showScreen('slogan');
                 }
-            }).catch(e => {
-                alert("Lỗi kết nối: " + e.message);
-                document.getElementById('btn-login').innerText = "TIẾP TỤC";
-            });
+            }).catch(e => { alert("Lỗi kết nối: " + e.message); document.getElementById('btn-login').innerText = "TIẾP TỤC"; });
         };
 
         window.App.saveSlogan = () => {
             const desc = document.getElementById('inp-desc').value.trim();
             LocalState.data.desc = desc;
-            
-            db.ref('users/' + LocalState.user).update(LocalState.data).then(() => {
-                localStorage.setItem('ms_user', LocalState.user);
-                LocalState.isEditing = false;
-                App.finishLogin();
-            });
+            db.ref('users/' + LocalState.user).update(LocalState.data).then(() => { localStorage.setItem('ms_user', LocalState.user); LocalState.isEditing = false; App.finishLogin(); });
         };
 
         window.App.finishLogin = () => {
@@ -248,31 +196,14 @@
             App.showScreen('login');
         };
 
-        window.App.logout = () => {
-            localStorage.removeItem('ms_user');
-            location.reload();
-        };
-
-        window.App.showMenu = () => {
-            LocalState.isEditing = false;
-            App.showScreen('menu');
-        };
-
+        window.App.logout = () => { localStorage.removeItem('ms_user'); location.reload(); };
+        window.App.showMenu = () => { LocalState.isEditing = false; App.showScreen('menu'); };
         window.App.showScreen = (id) => {
-            document.querySelectorAll('.screen').forEach(s => {
-                s.classList.remove('active');
-                s.style.display = 'none'; 
-            });
+            document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display = 'none'; });
             const target = document.getElementById('screen-' + id);
-            if(target) {
-                target.classList.add('active');
-                target.style.display = 'flex';
-            }
-            if (id === 'skins') {
-                window.App.renderSkins();
-            }
+            if(target) { target.classList.add('active'); target.style.display = 'flex'; }
+            if (id === 'skins') { window.App.renderSkins(); }
         };
-
         window.onload = window.App.init;
     </script>
 </body>

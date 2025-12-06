@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gỡ Bom (Defuse Mode)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap" rel="stylesheet"> 
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="config.js"></script>
+
+    <style>
+        /* CSS CẤP CỨU - Ghi đè mọi thứ để đảm bảo hiển thị */
+        body { 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            background: #0f172a;
+        }
+        
+        #screen-game {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding-top: 40px;
+        }
+
+        /* Khung bàn cờ cố định */
+        #defuse-board-container {
+            width: 95vw !important;
+            height: 95vw !important;
+            max-width: 400px !important;
+            max-height: 400px !important;
+            aspect-ratio: 1/1 !important;
+            background: #334155 !important;
+            padding: 5px !important;
+            border-radius: 12px !important;
+            border: 2px solid rgba(255,255,255,0.1) !important;
+            display: block !important; /* Đảm bảo div container hiện */
+            margin: 0 auto;
+        }
+
+        /* Lưới */
+        #grid {
+            display: grid !important;
+            width: 100% !important;
+            height: 100% !important;
+            grid-template-columns: repeat(10, 1fr) !important;
+            grid-template-rows: repeat(10, 1fr) !important;
+            gap: 2px !important;
+        }
+
+        /* Ô cờ */
+        .defuse-cell {
+            background: #475569;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: white;
+            user-select: none;
+            width: 100% !important; /* Buộc hiện */
+            height: 100% !important; /* Buộc hiện */
+        }
+        .defuse-cell.revealed { background: #1e293b; border: 1px solid rgba(255,255,255,0.05); }
+        .defuse-cell.flagged { background: #10b981 !important; }
+        .defuse-cell.bomb { background: #ef4444 !important; animation: shake 0.4s; }
+
+        /* Overlay */
+        #game-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15,23,42,0.98); z-index: 100;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 16px;
+        }
+        #game-overlay.show { display: flex !important; animation: fadeIn 0.3s; }
+        
+        .c1{color:#60a5fa} .c2{color:#4ade80} .c3{color:#f87171} .c4{color:#c084fc} .c5{color:#fbbf24}
+    </style>
+</head>
+<body>
+    <canvas id="confetti-canvas" style="position:fixed;top:0;left:0;pointer-events:none;z-index:9999"></canvas>
+    
+    <div id="btn-mute" onclick="toggleMuteUI()">🔊</div>
+
+    <div id="screen-game">
+        <div class="game-header">
+            <a href="index.html" class="btn-icon" onclick="stopAudio()">⬅</a>
+            <h2 style="margin:0; color:#2dd4bf;">GỠ BOM</h2>
+            <div style="width: 44px;"></div>
+        </div>
+
+        <div style="text-align:center; color:#94a3b8; font-size:0.9rem; margin-bottom:10px;">
+            Tìm và Click vào <span style="color:#ef4444; font-weight:bold;">10 QUẢ BOM</span>!
+        </div>
+
+        <div style="display: flex; gap: 20px; margin-bottom: 15px; width: 95%; max-width: 380px; justify-content: space-between;">
+            <div class="stat-box" style="color:#ef4444">💣 <span id="g-left">10</span></div>
+            <div class="stat-box" style="color:#fff">⏱️ <span id="g-time">0</span></div>
+        </div>
+
+        <div id="defuse-board-container">
+            <div id="grid"></div>
+            
+            <div id="game-overlay">
+                <h1 id="res-title" style="font-size:3rem; margin-bottom:10px; font-weight:900"></h1>
+                <p id="res-desc" style="color:#cbd5e1; margin-bottom:30px; text-align:center; font-size:1.2rem"></p>
+                <button class="btn btn-primary" onclick="location.reload()" style="width:80%">CHƠI LẠI</button>
+                <a href="index.html" class="btn" style="width:80%" onclick="stopAudio()">VỀ MENU</a>
+            </div>
+        </div>
+        
+        <div style="margin-top:20px; color:#64748b; font-size:0.8rem; text-align:center">
+            ⚠️ Chú ý: Có 5 ô giả (trống) cũng bị đóng.
+        </div>
+    </div>
+
+    <script>
+        // --- Confetti ---
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        const ctx = confettiCanvas.getContext('2d');
+        confettiCanvas.width = window.innerWidth;
+        confettiCanvas.height = window.innerHeight;
+        let particles = [];
+        function createConfetti() { for(let i=0; i<100; i++) { particles.push({ x: Math.random()*confettiCanvas.width, y: Math.random()*confettiCanvas.height - confettiCanvas.height, color: `hsl(${Math.random()*360},100%,50%)`, size: Math.random()*10+5, speedY: Math.random()*3+2, speedX: Math.random()*4-2, rotation: Math.random()*360 }); } animateConfetti(); }
+        function animateConfetti() { ctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height); particles.forEach((p,i)=>{ p.y+=p.speedY; p.x+=p.speedX; p.rotation+=5; ctx.fillStyle=p.color; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rotation*Math.PI/180); ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size); ctx.restore(); if(p.y>confettiCanvas.height) particles.splice(i,1); }); if(particles.length>0) requestAnimationFrame(animateConfetti); }
+
+        // --- Audio Wrappers ---
+        function safePlay(fnName) { try { if(window.SoundManager) window.SoundManager[fnName](); } catch(e){} }
+        function toggleMuteUI() { try { if(window.SoundManager) { const m = window.SoundManager.toggleMute(); document.getElementById('btn-mute').innerText = m?'🔇':'🔊'; document.getElementById('btn-mute').classList.toggle('muted', m); } } catch(e){} }
+        function stopAudio() { try { if(window.SoundManager) window.SoundManager.stopBGM(); } catch(e){} }
+
+        // --- MAIN INITIALIZATION ---
+        window.onload = function() {
+            console.log("Datbom loaded");
+            
+            // 1. KHỞI TẠO GAME TRƯỚC (QUAN TRỌNG NHẤT)
+            try {
+                Game.init();
+            } catch (e) {
+                alert("Lỗi khởi tạo Game: " + e.message);
+            }
+
+            // 2. SAU ĐÓ MỚI LO ĐẾN SKIN VÀ ÂM THANH
+            // Dùng setTimeout để tách luồng xử lý, nếu lỗi cũng không ảnh hưởng Game.init
+            setTimeout(() => {
+                try {
+                    // Không apply skin vào layout bàn cờ, chỉ load biến môi trường nếu cần
+                    // if(window.App && window.App.applySkin) window.App.applySkin(); 
+                    
+                    if(window.SoundManager) {
+                        window.SoundManager.init();
+                        if(localStorage.getItem('ms_muted') === 'true') {
+                            document.getElementById('btn-mute').innerText = '🔇';
+                            document.getElementById('btn-mute').classList.add('muted');
+                        } else {
+                            window.SoundManager.playBGM();
+                        }
+                    }
+                } catch(e) { console.log("Lỗi phụ trợ:", e); }
+            }, 100);
+        };
+
+        const Game = {
+            mines: 10, decoys: 5, grid: [], dom: [], found: 0, timer: null, time: 0, isOver: false,
+
+            init: () => {
+                Game.grid = Array(100).fill(0); Game.dom = []; Game.found = 0; Game.time = 0; Game.isOver = false;
+                if(Game.timer) clearInterval(Game.timer);
+                
+                document.getElementById('g-time').innerText = 0;
+                document.getElementById('g-left').innerText = Game.mines;
+                document.getElementById('game-overlay').classList.remove('show');
+                
+                const g = document.getElementById('grid');
+                g.innerHTML = '';
+
+                // Tạo mìn
+                let planted = 0;
+                while(planted < Game.mines) { let r = Math.floor(Math.random()*100); if(Game.grid[r]!=='B') { Game.grid[r]='B'; planted++; } }
+                
+                // Tạo decoy
+                let decoyCount = 0;
+                while(decoyCount < Game.decoys) { let r = Math.floor(Math.random()*100); if(Game.grid[r]!=='B' && Game.grid[r]!=='D') { Game.grid[r]='D'; decoyCount++; } }
+
+                // Tính số
+                for(let i=0; i<100; i++) {
+                    if(Game.grid[i]!=='B' && Game.grid[i]!=='D') { let c=0; Game.getN(i).forEach(x=>{if(Game.grid[x]==='B')c++}); Game.grid[i]=c; }
+                    if(Game.grid[i]==='D') { let c=0; Game.getN(i).forEach(x=>{if(Game.grid[x]==='B')c++}); Game.grid[i]='D'+c; }
+                }
+
+                // Render
+                for(let i=0; i<100; i++) {
+                    const c = document.createElement('div');
+                    c.className = 'defuse-cell'; // Class riêng biệt
+                    
+                    if (Game.grid[i] === 'B' || (typeof Game.grid[i] === 'string' && Game.grid[i].startsWith('D'))) {
+                        c.onclick = () => Game.click(i);
+                    } else {
+                        c.classList.add('revealed');
+                        if(Game.grid[i] > 0) {
+                            c.innerText = Game.grid[i];
+                            c.classList.add('c'+Game.grid[i]);
+                        }
+                    }
+                    g.appendChild(c);
+                    Game.dom.push(c);
+                }
+                
+                Game.timer = setInterval(() => { Game.time++; document.getElementById('g-time').innerText = Game.time; }, 1000);
+                console.log("Game Init Complete. Grid size:", Game.dom.length);
+            },
+
+            getN: (i) => { const w=10, l=i%w===0, r=i%w===w-1; return [!l?i-1:-1, !r?i+1:-1, i-w, i+w, !l?i-w-1:-1, !r?i-w+1:-1, !l?i+w-1:-1, !r?i+w+1:-1].filter(x=>x>=0&&x<100); },
+
+            click: (i) => {
+                if(Game.isOver) return;
+                const c = Game.dom[i];
+                if(c.classList.contains('revealed')) return;
+
+                if(Game.grid[i] === 'B') {
+                    // Đúng mìn
+                    c.classList.add('revealed', 'flagged');
+                    c.style.background = '#10b981'; 
+                    c.innerText = '💣';
+                    Game.found++;
+                    document.getElementById('g-left').innerText = Game.mines - Game.found;
+                    
+                    safePlay('playFlag');
+                    if(Game.found === Game.mines) Game.end(true);
+                } else {
+                    // Sai
+                    c.classList.add('revealed', 'bomb');
+                    c.style.background = '#ef4444';
+                    c.innerText = '💥';
+                    safePlay('playExplosion');
+                    Game.end(false);
+                }
+            },
+
+            end: (win) => {
+                Game.isOver = true;
+                clearInterval(Game.timer);
+                const t = document.getElementById('res-title');
+                const d = document.getElementById('res-desc');
+                
+                if(win) {
+                    safePlay('playWin');
+                    t.innerText = "THẮNG RỒI!"; t.style.color = "#4ade80"; d.innerText = "Bạn đã tìm đủ 10 quả bom!";
+                    createConfetti();
+                } else {
+                    t.innerText = "BÙM!"; t.style.color = "#ef4444"; d.innerText = "Đó là bom giả!";
+                    document.body.classList.add('shake-screen'); setTimeout(()=>document.body.classList.remove('shake-screen'), 500);
+                    // Hiện đáp án
+                    Game.grid.forEach((v, k) => {
+                        if(v === 'B' && !Game.dom[k].classList.contains('revealed')) {
+                            Game.dom[k].classList.add('revealed');
+                            Game.dom[k].style.background = '#10b981';
+                            Game.dom[k].innerText = '💣';
+                        }
+                    });
+                }
+                setTimeout(() => document.getElementById('game-overlay').classList.add('show'), 500);
+            }
+        };
+    </script>
+</body>
+</html>

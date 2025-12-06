@@ -1,4 +1,4 @@
-// config.js
+// config.js - SAFE MODE & ASMR AUDIO
 
 // 1. CẤU HÌNH FIREBASE
 const firebaseConfig = {
@@ -37,8 +37,7 @@ window.SKINS = [
     { id: 'pink',    name: 'Giấc Mơ Hồng', desc: 'Dễ thương', color: '#fce7f3' }
 ];
 
-// 4. BỘ TẠO SỐ NGẪU NHIÊN ĐỒNG BỘ (SEEDED RNG)
-// Đây là trái tim của việc đồng bộ bàn cờ.
+// 4. BỘ TẠO SỐ NGẪU NHIÊN (Seeded RNG)
 window.SeededRandom = class {
     constructor(seed) {
         this.seed = seed % 2147483647;
@@ -50,7 +49,79 @@ window.SeededRandom = class {
     }
 };
 
-// 5. LOGIC CHUNG
+// 5. HỆ THỐNG ÂM THANH ASMR (CLICK ONLY)
+window.SoundManager = {
+    ctx: null,
+    isMuted: false,
+
+    init: function() {
+        if (!this.ctx) {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+        }
+        this.isMuted = localStorage.getItem('ms_muted') === 'true';
+        this.updateMuteButton();
+    },
+
+    toggleMute: function() {
+        this.isMuted = !this.isMuted;
+        localStorage.setItem('ms_muted', this.isMuted);
+        this.updateMuteButton();
+        if (!this.isMuted) this.playSoftClick();
+        return this.isMuted;
+    },
+
+    updateMuteButton: function() {
+        const btn = document.getElementById('btn-mute');
+        if (btn) {
+            btn.innerText = this.isMuted ? '🔇' : '🔊';
+            btn.classList.toggle('muted', this.isMuted);
+        }
+    },
+
+    playSoftClick: function() {
+        if (this.isMuted || !this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        // Tạo tiếng "Bộp" nhẹ (Sine wave giảm cao độ)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+    },
+
+    // --- CHẾ ĐỘ TƯƠNG THÍCH (Tránh lỗi code cũ) ---
+    // Tất cả các hành động khác đều dùng chung tiếng click hoặc im lặng
+    playClick: function() { this.playSoftClick(); },
+    playDig: function() { this.playSoftClick(); },
+    playFlag: function() { this.playSoftClick(); },
+    playExplosion: function() { }, // Không nổ ồn ào
+    playWin: function() { }, // Không nhạc thắng
+    stopBGM: function() { } // Không nhạc nền
+};
+
+// Tự động bắt click toàn trang
+document.addEventListener('click', function(e) {
+    if (!window.SoundManager.ctx) window.SoundManager.init();
+    // Chỉ phát tiếng nếu click vào phần tử tương tác được
+    const target = e.target.closest('button, a, input, .cell, .btn, .btn-menu, .mode-btn, .btn-icon, .btn-grid-item, #btn-mute');
+    if (target) {
+        window.SoundManager.playSoftClick();
+    }
+});
+
+// 6. LOGIC DÙNG CHUNG
 window.checkLogin = function() {
     const user = localStorage.getItem('ms_user');
     if (user) return user;
@@ -99,3 +170,7 @@ function showGlobalToast(msg) {
     toast.style.display = 'block';
     setTimeout(() => { toast.style.display = 'none'; }, 3000);
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    if(window.SoundManager) window.SoundManager.init();
+});
