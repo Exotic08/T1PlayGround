@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <title>Chơi Game</title>
+    <title>Chơi Đơn</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap" rel="stylesheet"> 
     <link rel="stylesheet" href="style.css">
@@ -15,7 +15,6 @@
 
     <style>
         body { overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
-        
         #game-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15,23,42,0.98); z-index: 100;
@@ -23,25 +22,16 @@
             border-radius: 16px;
         }
         #game-overlay.show { display: flex !important; }
-        
         @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
     </style>
 </head>
 <body>
     
     <div id="toast" class="toast"><span>🏆</span><span id="toast-msg"></span></div>
-    <div id="spec-msg" style="display:none; position:absolute; top:70px; background:#fbbf24; color:black; padding:5px 15px; border-radius:20px; font-weight:bold; z-index:90;">👁️ ĐANG XEM ĐỐI THỦ</div>
 
-    <div id="screen-match" class="screen" style="justify-content: center; display: none;">
-        <h2 style="color: #10b981">TÌM ĐỐI THỦ</h2>
-        <div class="loader" style="border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px;"></div>
-        <p id="match-log" style="color: #94a3b8">Đang kết nối...</p>
-        <button class="btn btn-danger" onclick="App.cancelMatch()">HỦY BỎ</button>
-    </div>
-
-    <div id="screen-game" class="screen" style="display: none;">
+    <div id="screen-game" class="screen" style="display: flex;">
         <div class="game-header">
-            <a href="index.html" class="btn-icon" onclick="App.quitGame()">⬅</a>
+            <a href="index.html" class="btn-icon">⬅</a>
             <div id="pc-switch" class="pc-switch" style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 20px; cursor: pointer; border: 1px solid rgba(255,255,255,0.15);" onclick="Game.togglePC()">
                 <div class="pc-dot" style="width: 10px; height: 10px; border-radius: 50%; background: #64748b; transition: 0.3s;"></div>
                 <span class="pc-text" style="font-size: 0.8rem; font-weight: 700; color: #94a3b8;">PC MODE</span>
@@ -50,7 +40,6 @@
 
         <div style="display: flex; gap: 20px; margin-bottom: 15px; width: 95%; max-width: 380px; justify-content: space-between;">
             <div class="stat-box" style="color:#ef4444">🚩 <span id="g-flags">0</span></div>
-            <div id="pvp-info" style="color: #10b981; font-weight: bold; display: none;">VS <span id="opp-name">...</span></div>
             <div class="stat-box" style="color:#fff">⏱️ <span id="g-time">0</span></div>
         </div>
 
@@ -60,8 +49,7 @@
             <div id="game-overlay" style="display:none;">
                 <h1 id="res-title" style="font-size:3rem; margin-bottom:10px; font-weight:900"></h1>
                 <p id="res-desc" style="color:#cbd5e1; margin-bottom:30px; text-align:center; font-size:1.2rem"></p>
-                <button id="btn-watch" class="btn" style="background:#8b5cf6; width:80%; display:none; margin-bottom:10px;" onclick="Game.spectate()">👁️ XEM ĐỐI THỦ</button>
-                <button id="btn-replay" class="btn btn-primary" onclick="location.reload()" style="width:80%">CHƠI LẠI</button>
+                <button id="btn-replay" class="btn btn-primary" onclick="Game.init()" style="width:80%">CHƠI LẠI</button>
                 <a href="index.html" class="btn" style="width:80%">VỀ MENU</a>
             </div>
         </div>
@@ -78,127 +66,28 @@
 
     <script>
         const user = checkLogin();
-        const urlParams = new URLSearchParams(window.location.search);
-        const isPvPMode = urlParams.get('mode') === 'pvp';
-        
-        let State = { matchId: null, opponent: null, waitingRef: null, isPvP: isPvPMode, matchStartTime: 0 };
-        // Lưu trữ các ref để dọn dẹp (Fix Memory Leak)
-        let Listeners = { winner: null, dead: null, moves: null };
-
-        window.onload = function() {
-            if(window.App && window.App.applySkin) window.App.applySkin();
-            if (isPvPMode) { App.findMatch(); } else { App.startSingle(); }
-        };
-
         window.App = window.App || {};
 
-        window.App.startSingle = () => {
-            document.getElementById('screen-game').style.display = 'flex';
+        window.onload = function() {
             if(window.App.applySkin) window.App.applySkin();
-            setTimeout(() => Game.init(Math.floor(Math.random() * 100000)), 100);
-        };
-
-        window.App.findMatch = () => {
-            document.getElementById('screen-match').style.display = 'flex';
-            document.getElementById('match-log').innerText = "Đang tìm phòng...";
-            db.ref('waiting').once('value').then(snap => {
-                if(snap.exists()) {
-                    const users = snap.val(); const oppKey = Object.keys(users)[0];
-                    if(oppKey === user) return;
-                    const oppName = users[oppKey]; db.ref('waiting/' + oppKey).remove();
-                    document.getElementById('match-log').innerText = `Tìm thấy: ${oppName}!`;
-                    const mid = 'm_' + Date.now(); const seed = Math.floor(Math.random()*100000); const start = Date.now() + 1000;
-                    db.ref('matches/' + mid).set({ p1: oppName, p2: user, seed: seed, startTime: start, winner: "" });
-                    db.ref('users/' + oppName + '/match').set(mid);
-                    App.enterPvP(mid, seed, oppName, start);
-                } else {
-                    document.getElementById('match-log').innerText = "Đang đợi người khác...";
-                    State.waitingRef = db.ref('waiting/' + user); State.waitingRef.set(user);
-                    State.waitingRef.onDisconnect().remove();
-                    const myMatch = db.ref('users/' + user + '/match');
-                    myMatch.onDisconnect().remove();
-                    
-                    // Fix: Đảm bảo chỉ lắng nghe 1 lần
-                    myMatch.off();
-                    myMatch.on('value', snap => {
-                        const mid = snap.val();
-                        if(mid) {
-                            myMatch.remove(); State.waitingRef.remove();
-                            db.ref('matches/' + mid).once('value').then(ms => { var d = ms.val(); App.enterPvP(mid, d.seed, d.p2, d.startTime); });
-                        }
-                    });
-                }
-            });
-        };
-
-        window.App.cancelMatch = () => { if(State.waitingRef) State.waitingRef.remove(); window.location.href = 'index.html'; };
-
-        window.App.enterPvP = (mid, seed, opp, start) => {
-            State.isPvP = true; State.matchId = mid; State.opponent = opp; State.matchStartTime = start;
-            document.getElementById('screen-match').style.display = 'none';
-            document.getElementById('screen-game').style.display = 'flex';
-            
-            if(window.App.applySkin) window.App.applySkin();
-            
-            document.getElementById('pvp-info').style.display = 'block';
-            document.getElementById('opp-name').innerText = opp;
-            document.getElementById('btn-replay').style.display = 'none'; 
-            
-            Game.init(seed);
-
-            // FIX: Dọn dẹp listener cũ trước khi gán mới
-            if(Listeners.winner) Listeners.winner.off();
-            if(Listeners.dead) Listeners.dead.off();
-
-            Listeners.winner = db.ref('matches/' + mid + '/winner');
-            Listeners.winner.on('value', snap => {
-                var w = snap.val();
-                if(w) {
-                    if(w === "DRAW") Game.showRes("DRAW");
-                    else if(w === user) Game.end(true);
-                    else if(!Game.isOver && !Game.isSpectating) Game.pvpLose();
-                }
-            });
-
-            Listeners.dead = db.ref('matches/'+mid+'/dead');
-            Listeners.dead.on('value', snap => {
-                var d = snap.val(); if(d && d[user] && d[opp]) db.ref('matches/'+mid).update({winner: "DRAW"});
-            });
-            
-            // Handle disconnect lose
-            db.ref('matches/'+mid+'/dead/'+user).onDisconnect().set(true);
-        };
-
-        window.App.quitGame = () => { 
-            // Tắt hết listener khi thoát
-            if(Listeners.winner) Listeners.winner.off();
-            if(Listeners.dead) Listeners.dead.off();
-            if(Listeners.moves) Listeners.moves.off();
-
-            if(State.isPvP && !Game.isOver) db.ref('matches/' + State.matchId).update({winner: State.opponent}); 
-            window.location.href = 'index.html'; 
+            Game.init();
         };
 
         window.Game = {
             w: 10, bombs: 15, grid: [], dom: [], rng: null,
-            isOver: false, isPC: false, isSpectating: false, timer: null, time: 0, flags: 0, revealed: 0, firstClick: true, mode: 'dig',
+            isOver: false, isPC: false, timer: null, time: 0, flags: 0, revealed: 0, firstClick: true, mode: 'dig',
 
-            init: (seed) => {
+            init: () => {
                 if(Game.timer) clearInterval(Game.timer);
-                Game.isOver = false; Game.isSpectating = false; Game.time = 0; Game.flags = 0; Game.revealed = 0; Game.firstClick = true;
+                Game.isOver = false; Game.time = 0; Game.flags = 0; Game.revealed = 0; Game.firstClick = true;
                 
-                if(window.App.applySkin) window.App.applySkin();
-
-                if(typeof SeededRandom !== 'undefined') Game.rng = new SeededRandom(seed);
-                else Game.rng = { next: () => Math.random() };
+                Game.rng = { next: () => Math.random() };
 
                 const g = document.getElementById('grid');
                 if(!g) return;
                 g.innerHTML = ''; 
                 
                 document.getElementById('game-overlay').style.display = 'none';
-                document.getElementById('spec-msg').style.display = 'none';
-                document.getElementById('board-container').classList.remove('spectator-mode');
                 document.getElementById('g-time').innerText = '0';
                 document.getElementById('g-flags').innerText = Game.bombs;
                 
@@ -216,39 +105,24 @@
             },
 
             click: (i) => {
-                if(Game.isOver || Game.isSpectating) return;
+                if(Game.isOver) return;
                 const c = Game.dom[i];
                 if(c.classList.contains('revealed') && Game.grid[i] > 0) return Game.chord(i);
                 Game.isPC ? Game.dig(i) : (Game.mode==='flag'?Game.toggleFlag(i):Game.dig(i));
             },
 
-            dig: (i, fromSpec = false) => {
-                if(!fromSpec && Game.isSpectating) return;
+            dig: (i) => {
                 const c = Game.dom[i];
                 if(c.classList.contains('revealed') || c.classList.contains('flagged')) return;
                 
                 if(Game.firstClick) {
                     Game.firstClick = false; 
-                    // FIX LỖI DESYNC: Trong PvP, buộc phải dùng seed để rải bom giống hệt nhau
-                    // Không được phép dùng logic "tránh vị trí click đầu tiên" (wideOpen) 
-                    // vì vị trí click của 2 người chơi là khác nhau.
-                    // Nếu là PvP: forbidden = [] (Chấp nhận rủi ro đen đủi lượt đầu để đảm bảo công bằng)
-                    // Nếu là Chơi đơn: forbidden = [i] (Bảo hộ người chơi)
-                    
-                    let safeMode = !State.isPvP; 
-                    Game.plant(i, safeMode); 
-
-                    if(!fromSpec) Game.timer = setInterval(()=>{
-                        if(State.isPvP && State.matchStartTime) Game.time = Math.floor((Date.now() - State.matchStartTime)/1000);
-                        else Game.time++;
-                        document.getElementById('g-time').innerText=Game.time;
-                    }, 1000);
+                    Game.plant(i); 
+                    Game.timer = setInterval(()=>{ Game.time++; document.getElementById('g-time').innerText=Game.time; }, 1000);
                 }
                 
-                if(State.isPvP && !fromSpec) db.ref('matches/'+State.matchId+'/moves/'+user+'/'+i).set(1);
-                
-                if(Game.grid[i]==='B') { if(!fromSpec) Game.end(false, i); }
-                else { Game.reveal(i); if(Game.revealed === 100-Game.bombs && !fromSpec) Game.end(true); }
+                if(Game.grid[i]==='B') Game.end(false, i);
+                else { Game.reveal(i); if(Game.revealed === 100-Game.bombs) Game.end(true); }
             },
 
             reveal: (i) => {
@@ -263,10 +137,6 @@
                 if(c.classList.contains('flagged')) { c.classList.remove('flagged'); c.innerText = ''; Game.flags--; }
                 else if(Game.flags < 15) { c.classList.add('flagged'); c.innerText = ''; Game.flags++; }
                 document.getElementById('g-flags').innerText = Game.bombs - Game.flags;
-                if(State.isPvP && !Game.isSpectating) {
-                    var val = c.classList.contains('flagged') ? 3 : null;
-                    db.ref('matches/'+State.matchId+'/moves/'+user+'/'+i).set(val);
-                }
             },
 
             chord: (i) => {
@@ -281,23 +151,12 @@
                 }
             },
 
-            // FIX LOGIC PLANT: Nếu không phải SafeMode (PvP), forbidden là rỗng để đồng bộ
-            plant: (s, safeMode) => {
-                let forbidden = []; // Mặc định không cấm ô nào (cho PvP)
-                
-                if (safeMode) {
-                    forbidden = [s];
-                    // Logic mở rộng vùng an toàn cho chơi đơn
-                    forbidden = forbidden.concat(Game.getN(s));
-                }
-
+            plant: (s) => {
+                let forbidden = [s].concat(Game.getN(s));
                 let c = 0; 
                 while(c < Game.bombs) { 
                     let r = Math.floor(Game.rng.next() * 100);
-                    // Chỉ kiểm tra forbidden nếu nó có dữ liệu
-                    if(!forbidden.includes(r) && Game.grid[r] !== 'B') { 
-                        Game.grid[r] = 'B'; c++; 
-                    } 
+                    if(!forbidden.includes(r) && Game.grid[r] !== 'B') { Game.grid[r] = 'B'; c++; } 
                 }
                 for(let i=0; i<100; i++) if(Game.grid[i]!=='B') Game.grid[i] = Game.getN(i).filter(n=>Game.grid[n]==='B').length;
             },
@@ -305,69 +164,65 @@
             getN: (i) => { const w=10, l=i%w===0, r=i%w===w-1; return [!l?i-1:-1, !r?i+1:-1, i-w, i+w, !l?i-w-1:-1, !r?i-w+1:-1, !l?i+w-1:-1, !r?i+w+1:-1].filter(x=>x>=0&&x<100); },
             
             end: (w, i) => {
-                if(Game.isSpectating) return;
                 Game.isOver = true; clearInterval(Game.timer);
-                if(State.isPvP) {
-                    if(w) { db.ref('matches/'+State.matchId).update({winner:user}); Game.showRes(true); }
-                    else { db.ref('matches/'+State.matchId+'/dead/'+user).set(true); saveLoss(); Game.showRes(false, i); }
-                } else Game.showRes(w, i);
+                if(w) { 
+                    const isNewRecord = saveWin(Game.time); 
+                    Game.showRes(true, isNewRecord);
+                } else { 
+                    saveLoss(); 
+                    
+                    // Hiện bom và đợi 3s
+                    Game.revealAllBombs(i);
+                    setTimeout(() => {
+                        // Gọi lại showRes với i=null để tránh vẽ lại bom lần 2
+                        Game.showRes(false, false, null); 
+                    }, 3000);
+                }
             },
 
-            pvpLose: () => { Game.isOver = true; clearInterval(Game.timer); Game.showRes(false); },
-
-            showRes: (w, i) => {
-                if(!w && i!==undefined) {
-                    Game.grid.forEach((v,x)=>{ if(v==='B' && !Game.dom[x].classList.contains('flagged')) {Game.dom[x].classList.add('revealed','bomb'); Game.dom[x].innerText='💣';}});
-                    if(i!==null) Game.dom[i].style.background="#ef4444";
-                }
-                const t=document.getElementById('res-title'); const d=document.getElementById('res-desc');
-                const bw=document.getElementById('btn-watch'); const br=document.getElementById('btn-replay');
-                
-                if (w === "DRAW") { t.innerText = "HÒA NHAU!"; t.style.color = "#94a3b8"; d.innerText = "Cả hai đều nổ bom!"; br.style.display='none'; bw.style.display='none'; }
-                else if(w) { t.innerText="CHIẾN THẮNG!"; t.style.color="#4ade80"; d.innerText = State.isPvP ? `Thắng đối thủ: ${State.opponent}` : "Xuất sắc!"; if(!State.isPvP) { const r = saveWin(Game.time); d.innerHTML+= (r?"<br>🚀 KỶ LỤC MỚI!":""); } br.style.display='block'; bw.style.display='none'; }
-                else {
-                    t.innerText="THUA RỒI!"; t.style.color="#ef4444";
-                    if(State.isPvP) {
-                        d.innerText = Game.isSpectating ? "Đối thủ đã thắng!" : "Bạn đã nổ bom!";
-                        br.style.display='none'; bw.style.display=Game.isSpectating?'none':'block';
-                    } else {
-                        d.innerText = "Thử lại nhé!"; saveLoss();
-                        br.style.display='block'; bw.style.display='none';
+            // --- ĐÃ SỬA: CHỈ THÊM CLASS, KHÔNG GÁN TEXT ĐỂ TRÁNH 2 QUẢ BOM ---
+            revealAllBombs: (i) => {
+                Game.grid.forEach((v,x)=>{ 
+                    if(v==='B' && !Game.dom[x].classList.contains('flagged')) {
+                        Game.dom[x].classList.add('revealed','bomb'); 
+                        // Đã xóa dòng Game.dom[x].innerText='💣'; ở đây
                     }
+                });
+                if(i !== undefined && i !== null) Game.dom[i].style.background="#ef4444";
+            },
+
+            showRes: (w, isRec, i) => {
+                // Logic phòng hờ: Nếu i có giá trị, nghĩa là không qua hàm delay, vẫn hiện bom
+                if(!w && i !== null && i !== undefined) {
+                    Game.revealAllBombs(i);
+                }
+                
+                const t=document.getElementById('res-title'); const d=document.getElementById('res-desc');
+                
+                if(w) { 
+                    t.innerText="CHIẾN THẮNG!"; t.style.color="#4ade80"; 
+                    d.innerHTML = "Xuất sắc!" + (isRec ? "<br>🚀 KỶ LỤC MỚI!" : ""); 
+                } else {
+                    t.innerText="THUA RỒI!"; t.style.color="#ef4444";
+                    d.innerText = "Thử lại nhé!"; 
                 }
                 document.getElementById('game-overlay').style.display = 'flex';
             },
-            spectate: () => {
-                Game.isSpectating = true;
-                document.getElementById('game-overlay').style.display = 'none';
-                document.getElementById('spec-msg').style.display = 'block';
-                document.getElementById('board-container').classList.add('spectator-mode');
-                Game.dom.forEach(c => { c.className = 'cell'; c.innerText = ''; c.style.background = ''; });
-                Game.revealed = 0;
-                if(State.matchStartTime) { Game.timer = setInterval(()=>{ Game.time = Math.floor((Date.now() - State.matchStartTime)/1000); document.getElementById('g-time').innerText = Game.time; }, 1000); }
 
-                // FIX: Lưu listener để dọn dẹp sau này
-                if(Listeners.moves) Listeners.moves.off();
-                Listeners.moves = db.ref('matches/'+State.matchId+'/moves/'+State.opponent);
-                
-                Listeners.moves.on('value', snap => {
-                    if(snap.exists()) {
-                        const m = snap.val();
-                        Object.keys(m).forEach(k => { 
-                            var val = m[k];
-                            if(val === 3) { if(!Game.dom[k].classList.contains('revealed')) { Game.dom[k].classList.add('flagged'); } }
-                            else if(val === 2) { Game.dom[k].classList.add('revealed', 'bomb'); Game.dom[k].innerText='💣'; Game.dom[k].style.background="#ef4444"; }
-                            else if(val === 1 && !Game.dom[k].classList.contains('revealed')) { Game.dig(parseInt(k), true); }
-                            else if(val === null && Game.dom[k].classList.contains('flagged')) { Game.dom[k].classList.remove('flagged'); }
-                        });
-                    }
-                });
-            },
             togglePC: () => { Game.isPC = !Game.isPC; var s=document.getElementById('pc-switch'); var h=document.getElementById('pc-hint'); var m=document.getElementById('mob-ctrl'); if(Game.isPC) { s.classList.add('on'); h.style.display='block'; s.style.background='rgba(59,130,246,0.5)'; s.querySelector('.pc-dot').style.background='#10b981'; m.style.display='none'; } else { s.classList.remove('on'); h.style.display='none'; s.style.background='rgba(0,0,0,0.3)'; s.querySelector('.pc-dot').style.background='#64748b'; m.style.display='flex'; } },
             setMode: (m) => { Game.mode=m; document.getElementById('btn-dig').className='mode-btn '+(m==='dig'?'active':''); document.getElementById('btn-flag').className='mode-btn flag '+(m==='flag'?'active':''); }
         };
 
-        function saveWin(time) { db.ref('users/'+user).once('value').then(s => { let d = s.val() || {}; let wins = (d.wins||0) + 1; let best = d.bestTime ? Math.min(d.bestTime, time) : time; db.ref('users/'+user).update({wins: wins, bestTime: best}); if(window.App && window.App.unlockAch) { window.App.unlockAch('win1'); if(wins>=10) window.App.unlockAch('win10'); if(time<60) window.App.unlockAch('speed60'); } return time === d.bestTime; }); }
+        function saveWin(time) { 
+            return new Promise(resolve => {
+                db.ref('users/'+user).once('value').then(s => { 
+                    let d = s.val() || {}; let wins = (d.wins||0) + 1; let best = d.bestTime ? Math.min(d.bestTime, time) : time; 
+                    db.ref('users/'+user).update({wins: wins, bestTime: best}); 
+                    if(window.App && window.App.unlockAch) { window.App.unlockAch('win1'); if(wins>=10) window.App.unlockAch('win10'); if(time<60) window.App.unlockAch('speed60'); } 
+                    resolve(time === d.bestTime);
+                }); 
+            });
+        }
         function saveLoss() { db.ref('users/'+user).once('value').then(s => { let d = s.val() || {}; db.ref('users/'+user).update({losses: (d.losses||0) + 1}); }); }
     </script>
 </body>

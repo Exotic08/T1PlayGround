@@ -39,21 +39,27 @@
             <button class="btn-menu btn-classic" onclick="window.location.href='choi.html'">
                 <div style="display:flex; align-items:center;"><div class="btn-icon-large">💣</div><div class="btn-text"><span class="btn-title">CHƠI ĐƠN</span><span class="btn-sub">Luyện tập kỹ năng</span></div></div><div style="font-size:1.5rem">➡️</div>
             </button>
-            <button class="btn-menu btn-pvp-mode" onclick="window.location.href='choi.html?mode=pvp'">
+            
+            <button class="btn-menu btn-pvp-mode" onclick="window.location.href='pvp.html'">
                 <div style="display:flex; align-items:center;"><div class="btn-icon-large">⚔️</div><div class="btn-text"><span class="btn-title">ĐẤU PVP</span><span class="btn-sub">Đang chờ: <span id="stat-wait" style="font-weight:900; color:#fcd34d">0</span></span></div></div><div style="font-size:1.5rem">🔥</div>
             </button>
         </div>
 
         <button class="btn-menu btn-fun" onclick="App.toggleFun()" id="btn-fun-mode">
-            <div style="display:flex; align-items:center;"><div class="btn-icon-large">🎪</div><div class="btn-text"><span class="btn-title">GIẢI TRÍ</span><span class="btn-sub">Gỡ bom, Boss...</span></div></div><div style="font-size:1.5rem" id="fun-arrow">⬇️</div>
+            <div style="display:flex; align-items:center;"><div class="btn-icon-large">🎪</div><div class="btn-text"><span class="btn-title">GIẢI TRÍ</span><span class="btn-sub">Gỡ bom, Boss, Tùy chỉnh...</span></div></div><div style="font-size:1.5rem" id="fun-arrow">⬇️</div>
         </button>
 
         <div id="menu-sub" class="menu-sub">
             <button class="btn-menu" onclick="window.location.href='datbom.html'" style="background: rgba(13, 148, 136, 0.4); border: 1px solid #2dd4bf;">
                 <div style="display:flex; align-items:center;"><div class="btn-icon-large">💣</div><div class="btn-text"><span class="btn-title">GỠ BOM</span><span class="btn-sub">Tìm 10 quả mìn</span></div></div>
             </button>
+            
             <button class="btn-menu" onclick="window.location.href='giaitri.html'" style="background: rgba(124, 58, 237, 0.4); border: 1px solid #a855f7;">
                 <div style="display:flex; align-items:center;"><div class="btn-icon-large">👹</div><div class="btn-text"><span class="btn-title">ĐẠI CHIẾN BOSS</span><span class="btn-sub">RPG Minesweeper</span></div></div>
+            </button>
+
+            <button class="btn-menu" onclick="window.location.href='custom.html'" style="background: rgba(59, 130, 246, 0.4); border: 1px solid #3b82f6;">
+                <div style="display:flex; align-items:center;"><div class="btn-icon-large">🛠️</div><div class="btn-text"><span class="btn-title">TÙY CHỈNH</span><span class="btn-sub">Tự tạo map 50x50</span></div></div>
             </button>
         </div>
 
@@ -70,7 +76,7 @@
                 </div>
             </div>
             <button class="btn-menu btn-logout" onclick="App.logout()">ĐĂNG XUẤT</button>
-            <div style="margin-top:15px; color:#64748b; font-size:0.7rem; font-family:monospace;">Ver: 30.0 (Ultra Fluid)</div>
+            <div style="margin-top:15px; color:#64748b; font-size:0.7rem; font-family:monospace;">Ver: 30.1 (Modular + Custom)</div>
         </div>
     </div>
 
